@@ -12,9 +12,9 @@ updates:
       interval: "weekly"
 
   # Maintain dependencies for npm
-  - package-ecosystem: "npm"
+  - package-ecosystem: "rust-toolchain"
     directory: "/"
     schedule:
       interval: "weekly"
     allow:
-      -dependency-type: "production"
+      - dependency-type: "production"
