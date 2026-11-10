@@ -1,0 +1,49 @@
+{
+	"penoos-service": {
+		"prefix": "penoos-svc",
+		"description": "Penoos service",
+		"body": [
+		]
+	},
+	"penoos-action": {
+		"prefix": "penoos-action",
+		"description": "Penoos service action",
+		"body": [
+			
+		]
+	},
+	"penoos-event": {
+		"prefix": "penoos-event",
+		"description": "Penoos service event",
+		"body": [
+			
+		]
+	},
+	"penoos-broker": {
+		"prefix": "penoos-broker",
+		"description": "Penoos create ServiceBroker",
+		"body": [
+			
+		]
+	},
+	"penoos-db-service": {
+		"prefix": "penoos-db-svc",
+		"description": "Penoos DB service",
+		"body": [
+		]
+	},
+	"penoos-unit-test": {
+		"prefix": "penoos-unit",
+		"description": "Unit test for Penoos service",
+		"body": [
+			
+		]
+	},
+	"penoos-middleware": {
+		"prefix": "penoos-mw",
+		"description": "Penoos middleware",
+		"body": [
+			
+		]
+	}
+}

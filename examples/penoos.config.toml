@@ -1,0 +1,7 @@
+# Simple Penoos configuration
+nodeID = "rust-node-1"
+logger = true
+logLevel = "info"
+
+[transporter]
+type = "memory"

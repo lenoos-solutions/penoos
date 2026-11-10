@@ -1,0 +1,29 @@
+version: "3.0"
+
+services:
+
+  client:
+    build:
+      context: ./client
+    image: penoos-client
+    environment:
+      LOGLEVEL: "info"
+
+    restart: always
+    # networks:
+    #  - penoos
+
+  worker:
+    build:
+      context: ./worker
+    image: penoos-worker
+    environment:
+      LOGLEVEL: "info"
+
+    restart: always
+    # networks:
+    #  - penoos
+
+# networks:
+#   penoos:
+#     driver: overlay
