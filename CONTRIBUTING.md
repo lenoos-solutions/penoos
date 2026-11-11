@@ -59,7 +59,8 @@ We love pull requests! Here’s how to contribute code:
 
 #### Commit Message Guidelines
 
-We prefer conventional commits style:
+We prefer conventional commits style. The full type list and the enforced
+rules are in [docs/engineering/git-workflow.md](docs/engineering/git-workflow.md).
 
 - `feat: add NATS transporter`
 - `fix: resolve service discovery race condition`
@@ -67,6 +68,10 @@ We prefer conventional commits style:
 - `refactor: simplify broker internal state`
 - `test: add unit tests for circuit breaker`
 - `chore: update dependencies`
+- `SEMVER-MINOR: ...` and `SEMVER-MAJOR: ...`, or `!` after the type, for breaking changes
+
+Run `scripts/install-hooks.sh` once after cloning. The `commit-msg` hook checks
+the subject and the `pre-push` hook runs fmt, clippy, and tests.
 
 ### 4. Documentation
 
@@ -98,10 +103,13 @@ cargo clippy
 
 ## Coding Style
 
-- Follow standard Rust conventions (`rustfmt` + `clippy`).
+- Follow the Rust standards in [docs/engineering/rust-standards.md](docs/engineering/rust-standards.md) and the rest of [docs/engineering/](docs/engineering/).
 - Prefer clear and readable code over clever one-liners.
 - Add documentation comments (`///`) for public APIs.
 - Keep functions and modules focused and reasonably sized.
+
+Architecture, testing, security, and release guides are indexed in
+[docs/README.md](docs/README.md).
 
 ---
 

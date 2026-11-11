@@ -1,0 +1,15 @@
+#!/bin/sh
+# Runs the local quality gate from docs/engineering/deployment.md before a push.
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "pre-push: cargo fmt --check"
+cargo fmt --all -- --check
+
+echo "pre-push: cargo clippy -D warnings"
+cargo clippy --all-targets -- -D warnings
+
+echo "pre-push: cargo test"
+cargo test
