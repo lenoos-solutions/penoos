@@ -19,7 +19,7 @@ if ! printf '%s\n' "$subject" | grep -Eq "$pattern"; then
     exit 1
 fi
 
-if [ "${#subject}" -gt 512 ]; then
-    echo "commit-msg: subject is ${#subject} characters; the limit is 512" >&2
+if [ "${#subject}" -gt 256 ]; then
+    echo "commit-msg: subject is ${#subject} characters; the limit is 256" >&2
     exit 1
 fi
