@@ -63,6 +63,18 @@ including failure cases (peer down, timeout). Mark tests that need an external
 service (NATS, Redis) with `#[ignore = "requires <service>"]` and run them in a
 dedicated CI job that starts the service.
 
+## Test case macro
+
+`penoos::test_case!` is a declarative macro in `src/macros/test/mod.rs`, gated by the `test_macros` feature (enabled by `macros`). It is function-like, not an attribute, because a proc-macro attribute would need a separate `proc-macro = true` crate:
+
+```rust
+penoos::test_case!("TC-001", fn registers_action() {
+    assert!(true);
+});
+```
+
+It supports zero-argument functions with no return type.
+
 ## Documentation tests
 
 Every public example must compile. Use `no_run` only when the example needs
