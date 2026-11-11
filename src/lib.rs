@@ -61,6 +61,7 @@ pub mod validators;
 // Extended modules
 pub mod cachers;
 pub mod loggers;
+pub mod macros;
 pub mod mixins;
 pub mod reporters;
 pub mod strategies;
