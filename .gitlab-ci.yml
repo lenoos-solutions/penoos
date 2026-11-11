@@ -1,0 +1,209 @@
+stages:
+  - lint
+  - test
+  - build
+  - package
+  - publish
+  - release
+  - bench
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+default:
+  interruptible: true
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/.cargo
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+.rust:
+  image: rust:1-bookworm
+  cache:
+    key: rust-$CI_COMMIT_REF_SLUG
+    paths:
+      - .cargo/registry/
+      - .cargo/git/
+      - .cargo/bin/
+      - target/
+  before_script:
+    - export PATH="$CARGO_HOME/bin:$PATH"
+
+.nextest:
+  extends: .rust
+  before_script:
+    - export PATH="$CARGO_HOME/bin:$PATH"
+    - mkdir -p "$CARGO_HOME/bin"
+    - curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C "$CARGO_HOME/bin"
+
+fmt:
+  stage: lint
+  extends: .rust
+  script:
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check
+
+clippy:
+  stage: lint
+  extends: .rust
+  script:
+    - rustup component add clippy
+    - cargo clippy --all-targets --all-features -- -D warnings
+
+docs:
+  stage: lint
+  extends: .rust
+  variables:
+    RUSTDOCFLAGS: "-D warnings"
+  script:
+    - cargo doc --no-deps --all-features
+
+audit:
+  stage: lint
+  extends: .rust
+  script:
+    - cargo install cargo-audit --locked
+    - cargo audit
+
+verify-version:
+  stage: lint
+  extends: .rust
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+/'
+  script:
+    - apt-get update -qq && apt-get install -y -qq jq
+    - crate=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+    - |
+      if [ "v${crate}" != "$CI_COMMIT_TAG" ]; then
+        echo "Tag $CI_COMMIT_TAG does not match Cargo.toml version ${crate}"
+        exit 1
+      fi
+
+unit:
+  stage: test
+  extends: .nextest
+  script:
+    - cargo nextest run --lib --all-features
+
+integration:
+  stage: test
+  extends: .nextest
+  script:
+    - cargo nextest run --tests --all-features -E 'kind(test) & not binary(~e2e_)' --no-tests=pass
+
+doc-tests:
+  stage: test
+  extends: .rust
+  script:
+    - cargo test --doc --all-features
+
+e2e:
+  stage: test
+  extends: .nextest
+  services:
+    - name: redis:7
+      alias: redis
+  variables:
+    REDIS_URL: redis://redis:6379
+  script:
+    - cargo nextest run --tests --all-features -E 'binary(~e2e_)' --run-ignored only --no-tests=pass
+
+features:
+  stage: test
+  extends: .rust
+  parallel:
+    matrix:
+      - FEATURES:
+          - none
+          - tcp-transport
+          - nats-transport
+          - msgpack
+          - oxicode-serializer
+          - wincode-serializer
+          - postcard-serializer
+  script:
+    - |
+      if [ "$FEATURES" = "none" ]; then
+        cargo check --no-default-features
+      else
+        cargo check --no-default-features --features "$FEATURES"
+      fi
+
+build:
+  stage: build
+  extends: .rust
+  script:
+    - cargo build --release --bin penoos-runner
+    - mkdir -p dist
+    - name="penoos-runner-${CI_COMMIT_REF_NAME}-x86_64-unknown-linux-gnu"
+    - tar -czf "dist/${name}.tar.gz" -C target/release penoos-runner
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+
+publish-crate:
+  stage: publish
+  extends: .rust
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+/'
+  needs: [fmt, clippy, unit, integration, doc-tests, e2e, features, docs, build, verify-version]
+  environment:
+    name: crates-io
+  script:
+    - cargo publish
+
+package-binaries:
+  stage: publish
+  image: curlimages/curl:latest
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+/'
+  needs: [build, verify-version]
+  script:
+    - cd dist
+    - sha256sum penoos-runner-* > SHA256SUMS
+    - |
+      for file in penoos-runner-* SHA256SUMS; do
+        curl --fail --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$file" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/penoos-runner/${CI_COMMIT_TAG}/${file}"
+      done
+  artifacts:
+    paths:
+      - dist/
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+/'
+  needs: [publish-crate, package-binaries]
+  script:
+    - echo "Creating release $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "Release $CI_COMMIT_TAG"
+    assets:
+      links:
+        - name: penoos-runner-x86_64-unknown-linux-gnu
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/penoos-runner/${CI_COMMIT_TAG}/penoos-runner-${CI_COMMIT_TAG}-x86_64-unknown-linux-gnu.tar.gz"
+        - name: SHA256SUMS
+          url: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/penoos-runner/${CI_COMMIT_TAG}/SHA256SUMS"
+
+bench:
+  stage: bench
+  extends: .rust
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - cargo bench --all-features
+  artifacts:
+    paths:
+      - target/criterion/
+    expire_in: 30 days
