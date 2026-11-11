@@ -1,10 +1,10 @@
 //! TCP transporter implementation for Penoos
-//! 
+//!
 //! This transporter provides communication over TCP sockets.
 
 use crate::errors::Result;
 use crate::transporters::{
-    Transporter, TransportStats, RequestOptions, ServiceInfo, NodeInfo, EventHandler
+    EventHandler, NodeInfo, RequestOptions, ServiceInfo, TransportStats, Transporter,
 };
 use async_trait::async_trait;
 use serde_json::Value;
@@ -47,12 +47,23 @@ impl TcpTransporter {
 
 #[async_trait]
 impl Transporter for TcpTransporter {
-    async fn request(&self, _target: &str, _action: &str, _params: Value, _options: RequestOptions) -> Result<Value> {
+    async fn request(
+        &self,
+        _target: &str,
+        _action: &str,
+        _params: Value,
+        _options: RequestOptions,
+    ) -> Result<Value> {
         // TODO: Implement TCP request
         Ok(Value::Null)
     }
 
-    async fn publish(&self, _event: &str, _payload: Value, _groups: Option<Vec<String>>) -> Result<()> {
+    async fn publish(
+        &self,
+        _event: &str,
+        _payload: Value,
+        _groups: Option<Vec<String>>,
+    ) -> Result<()> {
         // TODO: Implement TCP event publishing
         Ok(())
     }

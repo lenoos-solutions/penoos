@@ -1,14 +1,14 @@
 //! Load balancing and routing strategies for Penoos
 
-pub mod round_robin;
-pub mod random;
 pub mod cpu_usage;
 pub mod latency;
 pub mod prefer_local;
+pub mod random;
+pub mod round_robin;
 
-use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::errors::Result;
 
@@ -17,10 +17,10 @@ use crate::errors::Result;
 pub trait LoadBalancingStrategy: Send + Sync {
     /// Select the best endpoint from available options
     async fn select(&self, endpoints: &[ServiceEndpoint]) -> Result<Option<ServiceEndpoint>>;
-    
+
     /// Get strategy name
     fn name(&self) -> &'static str;
-    
+
     /// Reset strategy state (for stateful strategies like round-robin)
     async fn reset(&self);
 }
@@ -79,27 +79,27 @@ impl ServiceEndpoint {
             metadata: HashMap::new(),
         }
     }
-    
+
     pub fn with_cpu_usage(mut self, cpu_usage: f64) -> Self {
         self.cpu_usage = Some(cpu_usage);
         self
     }
-    
+
     pub fn with_memory_usage(mut self, memory_usage: f64) -> Self {
         self.memory_usage = Some(memory_usage);
         self
     }
-    
+
     pub fn with_response_time(mut self, response_time: f64) -> Self {
         self.response_time = Some(response_time);
         self
     }
-    
+
     pub fn with_metadata(mut self, key: String, value: Value) -> Self {
         self.metadata.insert(key, value);
         self
     }
-    
+
     pub fn set_available(mut self, available: bool) -> Self {
         self.available = available;
         self
@@ -128,7 +128,7 @@ impl CircuitBreaker {
             half_open_calls: 0,
         }
     }
-    
+
     pub fn can_execute(&mut self) -> bool {
         match self.state {
             CircuitBreakerState::Closed => true,
@@ -145,12 +145,10 @@ impl CircuitBreaker {
                     false
                 }
             }
-            CircuitBreakerState::HalfOpen => {
-                self.half_open_calls < self.config.half_open_max_calls
-            }
+            CircuitBreakerState::HalfOpen => self.half_open_calls < self.config.half_open_max_calls,
         }
     }
-    
+
     pub fn record_success(&mut self) {
         match self.state {
             CircuitBreakerState::Closed => {
@@ -170,11 +168,11 @@ impl CircuitBreaker {
             }
         }
     }
-    
+
     pub fn record_failure(&mut self) {
         self.failure_count += 1;
         self.last_failure_time = Some(std::time::Instant::now());
-        
+
         match self.state {
             CircuitBreakerState::Closed => {
                 if self.failure_count >= self.config.failure_threshold {
@@ -191,11 +189,11 @@ impl CircuitBreaker {
             }
         }
     }
-    
+
     pub fn get_state(&self) -> &CircuitBreakerState {
         &self.state
     }
-    
+
     pub fn get_stats(&self) -> CircuitBreakerStats {
         CircuitBreakerStats {
             state: self.state.clone(),
@@ -218,14 +216,14 @@ pub struct CircuitBreakerStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_service_endpoint_builder() {
         let endpoint = ServiceEndpoint::new("test".to_string(), "node1".to_string(), false)
             .with_cpu_usage(50.0)
             .with_response_time(100.0)
             .with_metadata("version".to_string(), serde_json::json!("1.0"));
-        
+
         assert_eq!(endpoint.service_name, "test");
         assert_eq!(endpoint.node_id, "node1");
         assert!(!endpoint.is_local);
@@ -233,28 +231,28 @@ mod tests {
         assert_eq!(endpoint.response_time, Some(100.0));
         assert!(endpoint.metadata.contains_key("version"));
     }
-    
+
     #[test]
     fn test_circuit_breaker_basic() {
         let config = CircuitBreakerConfig::default();
         let mut cb = CircuitBreaker::new(config);
-        
+
         // Initially closed
         assert_eq!(cb.get_state(), &CircuitBreakerState::Closed);
         assert!(cb.can_execute());
-        
+
         // Record failures up to threshold
         for _ in 0..4 {
             cb.record_failure();
             assert_eq!(cb.get_state(), &CircuitBreakerState::Closed);
         }
-        
+
         // One more failure should open the circuit
         cb.record_failure();
         assert_eq!(cb.get_state(), &CircuitBreakerState::Open);
         assert!(!cb.can_execute());
     }
-    
+
     #[test]
     fn test_circuit_breaker_half_open() {
         let config = CircuitBreakerConfig {
@@ -263,19 +261,19 @@ mod tests {
             ..Default::default()
         };
         let mut cb = CircuitBreaker::new(config);
-        
+
         // Open the circuit
         cb.record_failure();
         cb.record_failure();
         assert_eq!(cb.get_state(), &CircuitBreakerState::Open);
-        
+
         // Wait for reset timeout
         std::thread::sleep(std::time::Duration::from_millis(2));
-        
+
         // Should transition to half-open
         assert!(cb.can_execute());
         assert_eq!(cb.get_state(), &CircuitBreakerState::HalfOpen);
-        
+
         // Record success should close the circuit after enough successes
         for _ in 0..3 {
             cb.record_success();

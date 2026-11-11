@@ -1,38 +1,38 @@
 //! Caching implementations for Penoos
 
+pub mod lru;
 pub mod memory;
 pub mod redis;
-pub mod lru;
 
-use std::time::Duration;
+use crate::errors::Result;
 use async_trait::async_trait;
 use serde_json::Value;
-use crate::errors::Result;
+use std::time::Duration;
 
 /// Trait for cache implementations
 #[async_trait]
 pub trait Cacher: Send + Sync {
     /// Get a value from the cache
     async fn get(&self, key: &str) -> Result<Option<Value>>;
-    
+
     /// Set a value in the cache with optional TTL
     async fn set(&self, key: &str, value: Value, ttl: Option<Duration>) -> Result<()>;
-    
+
     /// Delete a value from the cache
     async fn del(&self, key: &str) -> Result<bool>;
-    
+
     /// Clear all values from the cache
     async fn clear(&self) -> Result<()>;
-    
+
     /// Get cache statistics
     async fn get_stats(&self) -> Result<CacheStats>;
-    
+
     /// Check if the cache is healthy
     async fn health_check(&self) -> Result<bool>;
 }
 
 /// Cache statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CacheStats {
     pub hits: u64,
     pub misses: u64,
@@ -56,17 +56,6 @@ impl Default for CacheConfig {
             max_keys: Some(1000),
             max_size: Some(1024 * 1024), // 1MB default
             prefix: None,
-        }
-    }
-}
-
-impl Default for CacheStats {
-    fn default() -> Self {
-        Self {
-            hits: 0,
-            misses: 0,
-            keys: 0,
-            size: 0,
         }
     }
 }

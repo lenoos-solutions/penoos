@@ -1,10 +1,10 @@
 //! NATS transporter implementation for Penoos
-//! 
+//!
 //! This transporter provides communication through NATS messaging system.
 
 use crate::errors::Result;
 use crate::transporters::{
-    Transporter, TransportStats, RequestOptions, ServiceInfo, NodeInfo, EventHandler
+    EventHandler, NodeInfo, RequestOptions, ServiceInfo, TransportStats, Transporter,
 };
 use async_trait::async_trait;
 use serde_json::Value;
@@ -47,12 +47,23 @@ impl NatsTransporter {
 
 #[async_trait]
 impl Transporter for NatsTransporter {
-    async fn request(&self, _target: &str, _action: &str, _params: Value, _options: RequestOptions) -> Result<Value> {
+    async fn request(
+        &self,
+        _target: &str,
+        _action: &str,
+        _params: Value,
+        _options: RequestOptions,
+    ) -> Result<Value> {
         // TODO: Implement NATS request
         Ok(Value::Null)
     }
 
-    async fn publish(&self, _event: &str, _payload: Value, _groups: Option<Vec<String>>) -> Result<()> {
+    async fn publish(
+        &self,
+        _event: &str,
+        _payload: Value,
+        _groups: Option<Vec<String>>,
+    ) -> Result<()> {
         // TODO: Implement NATS event publishing
         Ok(())
     }

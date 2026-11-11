@@ -64,10 +64,10 @@ impl CacheBackend for MemoryCache {
         self.cleanup_expired();
         let data = self.data.read();
         if let Some(entry) = data.get(key) {
-            if let Some(expires_at) = entry.expires_at {
-                if expires_at <= Instant::now() {
-                    return Ok(None);
-                }
+            if let Some(expires_at) = entry.expires_at
+                && expires_at <= Instant::now()
+            {
+                return Ok(None);
             }
             Ok(Some(entry.value.clone()))
         } else {
@@ -78,7 +78,7 @@ impl CacheBackend for MemoryCache {
     fn set(&self, key: &str, value: Value, ttl: Option<Duration>) -> Result<()> {
         let expires_at = ttl.map(|duration| Instant::now() + duration);
         let entry = CacheEntry { value, expires_at };
-        
+
         let mut data = self.data.write();
         data.insert(key.to_string(), entry);
         Ok(())
@@ -177,11 +177,13 @@ mod tests {
         let value = json!("test");
 
         // Set with very short TTL
-        cache.set(key, value.clone(), Some(Duration::from_millis(1))).unwrap();
-        
+        cache
+            .set(key, value.clone(), Some(Duration::from_millis(1)))
+            .unwrap();
+
         // Sleep a bit to let it expire
         std::thread::sleep(Duration::from_millis(10));
-        
+
         // Should be None now
         assert_eq!(cache.get(key).unwrap(), None);
     }
@@ -189,7 +191,7 @@ mod tests {
     #[test]
     fn test_cache_keys() {
         let cache = MemoryCache::new();
-        
+
         cache.set("user:1", json!("user1"), None).unwrap();
         cache.set("user:2", json!("user2"), None).unwrap();
         cache.set("post:1", json!("post1"), None).unwrap();

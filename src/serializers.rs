@@ -8,10 +8,10 @@ use crate::errors::Result;
 pub trait Serializer: Send + Sync {
     /// Serialize a value to bytes
     fn serialize(&self, value: &Value) -> Result<Vec<u8>>;
-    
+
     /// Deserialize bytes to a value
     fn deserialize(&self, data: &[u8]) -> Result<Value>;
-    
+
     /// Get the content type for this serializer
     fn content_type(&self) -> &'static str;
 }
@@ -41,19 +41,15 @@ pub struct MessagePackSerializer;
 impl Serializer for MessagePackSerializer {
     fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
         use rmp_serde;
-        rmp_serde::to_vec(value).map_err(|e| {
-            crate::errors::PenoosError::SerializationError {
-                message: format!("MessagePack serialization error: {}", e),
-            }
+        rmp_serde::to_vec(value).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("MessagePack serialization error: {}", e),
         })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Value> {
         use rmp_serde;
-        rmp_serde::from_slice(data).map_err(|e| {
-            crate::errors::PenoosError::SerializationError {
-                message: format!("MessagePack deserialization error: {}", e),
-            }
+        rmp_serde::from_slice(data).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("MessagePack deserialization error: {}", e),
         })
     }
 
@@ -69,18 +65,14 @@ pub struct BincodeSerializer;
 #[cfg(feature = "bincode-serializer")]
 impl Serializer for BincodeSerializer {
     fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
-        bincode::serialize(value).map_err(|e| {
-            crate::errors::PenoosError::SerializationError {
-                message: format!("Bincode serialization error: {}", e),
-            }
+        bincode::serialize(value).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("Bincode serialization error: {}", e),
         })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Value> {
-        bincode::deserialize(data).map_err(|e| {
-            crate::errors::PenoosError::SerializationError {
-                message: format!("Bincode deserialization error: {}", e),
-            }
+        bincode::deserialize(data).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("Bincode deserialization error: {}", e),
         })
     }
 
@@ -101,15 +93,15 @@ impl SerializerRegistry {
             default: Box::new(JsonSerializer),
             serializers: std::collections::HashMap::new(),
         };
-        
+
         registry.register("json", Box::new(JsonSerializer));
-        
+
         #[cfg(feature = "msgpack")]
         registry.register("msgpack", Box::new(MessagePackSerializer));
-        
+
         #[cfg(feature = "bincode-serializer")]
         registry.register("bincode", Box::new(BincodeSerializer));
-        
+
         registry
     }
 
@@ -167,11 +159,11 @@ mod tests {
 
     #[test]
     fn test_serializer_registry() {
-        let mut registry = SerializerRegistry::new();
-        
+        let registry = SerializerRegistry::new();
+
         assert!(registry.get("json").is_some());
         assert!(registry.get("nonexistent").is_none());
-        
+
         let serializers = registry.list();
         assert!(serializers.contains(&"json".to_string()));
     }
@@ -180,7 +172,7 @@ mod tests {
     fn test_serializer_round_trip() {
         let registry = SerializerRegistry::new();
         let json_serializer = registry.get("json").unwrap();
-        
+
         let original = json!({
             "string": "hello",
             "number": 42,

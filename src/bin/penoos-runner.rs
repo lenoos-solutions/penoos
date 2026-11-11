@@ -11,13 +11,13 @@ use std::process;
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
-    
+
     let mut runner = PenoosRunner::new();
-    
+
     match runner.start(args).await {
         Ok(true) => {
             println!("🚀 Penoos broker started successfully");
-            
+
             // Wait for shutdown signal
             if let Err(e) = runner.wait_for_shutdown().await {
                 eprintln!("❌ Error during shutdown: {}", e);

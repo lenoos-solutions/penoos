@@ -26,101 +26,98 @@ fn validate_value(value: &Value, schema: &Value) -> Result<()> {
             validate_type(value, type_name)?;
         }
         Value::Object(schema_obj) => {
-            if let Some(type_val) = schema_obj.get("type") {
-                if let Some(type_name) = type_val.as_str() {
-                    validate_type(value, type_name)?;
-                }
+            if let Some(type_val) = schema_obj.get("type")
+                && let Some(type_name) = type_val.as_str()
+            {
+                validate_type(value, type_name)?;
             }
 
             // Check required fields
-            if let Some(Value::Bool(true)) = schema_obj.get("required") {
-                if value.is_null() {
+            if let Some(Value::Bool(true)) = schema_obj.get("required")
+                && value.is_null()
+            {
+                return Err(PenoosError::ValidationError {
+                    message: "Field is required".to_string(),
+                });
+            }
+
+            // Check enum values
+            if let Some(enum_values) = schema_obj.get("enum")
+                && let Some(enum_array) = enum_values.as_array()
+                && !enum_array.contains(value)
+            {
+                return Err(PenoosError::ValidationError {
+                    message: format!("Value must be one of: {:?}", enum_array),
+                });
+            }
+
+            // Check min/max for numbers
+            if let Some(min_val) = schema_obj.get("min")
+                && let (Some(num), Some(min)) = (value.as_f64(), min_val.as_f64())
+                && num < min
+            {
+                return Err(PenoosError::ValidationError {
+                    message: format!("Value must be >= {}", min),
+                });
+            }
+
+            if let Some(max_val) = schema_obj.get("max")
+                && let (Some(num), Some(max)) = (value.as_f64(), max_val.as_f64())
+                && num > max
+            {
+                return Err(PenoosError::ValidationError {
+                    message: format!("Value must be <= {}", max),
+                });
+            }
+
+            // Check length for strings and arrays
+            if let Some(min_length_val) = schema_obj.get("minLength")
+                && let Some(min_length) = min_length_val.as_u64()
+            {
+                let length = match value {
+                    Value::String(s) => s.len(),
+                    Value::Array(a) => a.len(),
+                    _ => 0,
+                };
+                if length < min_length as usize {
                     return Err(PenoosError::ValidationError {
-                        message: "Field is required".to_string(),
+                        message: format!("Length must be >= {}", min_length),
                     });
                 }
             }
 
-            // Check enum values
-            if let Some(enum_values) = schema_obj.get("enum") {
-                if let Some(enum_array) = enum_values.as_array() {
-                    if !enum_array.contains(value) {
-                        return Err(PenoosError::ValidationError {
-                            message: format!("Value must be one of: {:?}", enum_array),
-                        });
-                    }
-                }
-            }
-
-            // Check min/max for numbers
-            if let Some(min_val) = schema_obj.get("min") {
-                if let (Some(num), Some(min)) = (value.as_f64(), min_val.as_f64()) {
-                    if num < min {
-                        return Err(PenoosError::ValidationError {
-                            message: format!("Value must be >= {}", min),
-                        });
-                    }
-                }
-            }
-
-            if let Some(max_val) = schema_obj.get("max") {
-                if let (Some(num), Some(max)) = (value.as_f64(), max_val.as_f64()) {
-                    if num > max {
-                        return Err(PenoosError::ValidationError {
-                            message: format!("Value must be <= {}", max),
-                        });
-                    }
-                }
-            }
-
-            // Check length for strings and arrays
-            if let Some(min_length_val) = schema_obj.get("minLength") {
-                if let Some(min_length) = min_length_val.as_u64() {
-                    let length = match value {
-                        Value::String(s) => s.len(),
-                        Value::Array(a) => a.len(),
-                        _ => 0,
-                    };
-                    if length < min_length as usize {
-                        return Err(PenoosError::ValidationError {
-                            message: format!("Length must be >= {}", min_length),
-                        });
-                    }
-                }
-            }
-
-            if let Some(max_length_val) = schema_obj.get("maxLength") {
-                if let Some(max_length) = max_length_val.as_u64() {
-                    let length = match value {
-                        Value::String(s) => s.len(),
-                        Value::Array(a) => a.len(),
-                        _ => 0,
-                    };
-                    if length > max_length as usize {
-                        return Err(PenoosError::ValidationError {
-                            message: format!("Length must be <= {}", max_length),
-                        });
-                    }
+            if let Some(max_length_val) = schema_obj.get("maxLength")
+                && let Some(max_length) = max_length_val.as_u64()
+            {
+                let length = match value {
+                    Value::String(s) => s.len(),
+                    Value::Array(a) => a.len(),
+                    _ => 0,
+                };
+                if length > max_length as usize {
+                    return Err(PenoosError::ValidationError {
+                        message: format!("Length must be <= {}", max_length),
+                    });
                 }
             }
 
             // Validate object properties
-            if let Some(properties) = schema_obj.get("properties") {
-                if let (Some(obj), Some(props)) = (value.as_object(), properties.as_object()) {
-                    for (prop_name, prop_schema) in props {
-                        if let Some(prop_value) = obj.get(prop_name) {
-                            validate_value(prop_value, prop_schema)?;
-                        }
+            if let Some(properties) = schema_obj.get("properties")
+                && let (Some(obj), Some(props)) = (value.as_object(), properties.as_object())
+            {
+                for (prop_name, prop_schema) in props {
+                    if let Some(prop_value) = obj.get(prop_name) {
+                        validate_value(prop_value, prop_schema)?;
                     }
                 }
             }
 
             // Validate array items
-            if let Some(items_schema) = schema_obj.get("items") {
-                if let Some(array) = value.as_array() {
-                    for item in array {
-                        validate_value(item, items_schema)?;
-                    }
+            if let Some(items_schema) = schema_obj.get("items")
+                && let Some(array) = value.as_array()
+            {
+                for item in array {
+                    validate_value(item, items_schema)?;
                 }
             }
         }
@@ -154,7 +151,11 @@ fn validate_type(value: &Value, type_name: &str) -> Result<()> {
 
     if !valid {
         return Err(PenoosError::ValidationError {
-            message: format!("Expected type '{}', got '{}'", type_name, get_value_type(value)),
+            message: format!(
+                "Expected type '{}', got '{}'",
+                type_name,
+                get_value_type(value)
+            ),
         });
     }
 
@@ -191,7 +192,7 @@ impl ValidatorRegistry {
             default: Box::new(SimpleValidator),
             validators: std::collections::HashMap::new(),
         };
-        
+
         registry.register("simple", Box::new(SimpleValidator));
         registry
     }
@@ -241,13 +242,21 @@ mod tests {
         let validator = SimpleValidator;
 
         // String validation
-        assert!(validator.validate(&json!("hello"), &json!("string")).is_ok());
+        assert!(
+            validator
+                .validate(&json!("hello"), &json!("string"))
+                .is_ok()
+        );
         assert!(validator.validate(&json!(42), &json!("string")).is_err());
 
         // Number validation
         assert!(validator.validate(&json!(42), &json!("number")).is_ok());
         assert!(validator.validate(&json!(42.5), &json!("number")).is_ok());
-        assert!(validator.validate(&json!("hello"), &json!("number")).is_err());
+        assert!(
+            validator
+                .validate(&json!("hello"), &json!("number"))
+                .is_err()
+        );
 
         // Boolean validation
         assert!(validator.validate(&json!(true), &json!("boolean")).is_ok());
@@ -255,11 +264,19 @@ mod tests {
         assert!(validator.validate(&json!(1), &json!("boolean")).is_err());
 
         // Array validation
-        assert!(validator.validate(&json!([1, 2, 3]), &json!("array")).is_ok());
+        assert!(
+            validator
+                .validate(&json!([1, 2, 3]), &json!("array"))
+                .is_ok()
+        );
         assert!(validator.validate(&json!({}), &json!("array")).is_err());
 
         // Object validation
-        assert!(validator.validate(&json!({"key": "value"}), &json!("object")).is_ok());
+        assert!(
+            validator
+                .validate(&json!({"key": "value"}), &json!("object"))
+                .is_ok()
+        );
         assert!(validator.validate(&json!([]), &json!("object")).is_err());
     }
 
@@ -313,11 +330,11 @@ mod tests {
 
     #[test]
     fn test_validator_registry() {
-        let mut registry = ValidatorRegistry::new();
-        
+        let registry = ValidatorRegistry::new();
+
         assert!(registry.get("simple").is_some());
         assert!(registry.get("nonexistent").is_none());
-        
+
         let validators = registry.list();
         assert!(validators.contains(&"simple".to_string()));
     }

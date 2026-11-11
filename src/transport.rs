@@ -3,10 +3,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::{
-    context::Context,
-    errors::Result,
-};
+use crate::{context::Context, errors::Result};
 
 /// Transport layer trait for communication between nodes
 #[async_trait]
@@ -60,9 +57,7 @@ pub enum TransportPacket {
         broadcast: bool,
     },
     /// Discover packet for service discovery
-    Discover {
-        sender: String,
-    },
+    Discover { sender: String },
     /// Info packet for node information
     Info {
         sender: String,
@@ -77,15 +72,9 @@ pub enum TransportPacket {
         memory: Option<f64>,
     },
     /// Disconnect packet
-    Disconnect {
-        sender: String,
-        reason: String,
-    },
+    Disconnect { sender: String, reason: String },
     /// Ping packet for connectivity check
-    Ping {
-        sender: String,
-        time: u64,
-    },
+    Ping { sender: String, time: u64 },
     /// Pong packet response to ping
     Pong {
         sender: String,
@@ -151,13 +140,15 @@ impl Default for LocalTransport {
 #[async_trait]
 impl Transport for LocalTransport {
     async fn connect(&self) -> Result<()> {
-        self.connected.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.connected
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         log::info!("Local transport connected");
         Ok(())
     }
 
     async fn disconnect(&self) -> Result<()> {
-        self.connected.store(false, std::sync::atomic::Ordering::Relaxed);
+        self.connected
+            .store(false, std::sync::atomic::Ordering::Relaxed);
         log::info!("Local transport disconnected");
         Ok(())
     }
@@ -211,13 +202,15 @@ pub mod tcp {
     impl Transport for TcpTransport {
         async fn connect(&self) -> Result<()> {
             let _listener = TcpListener::bind(self.address).await?;
-            self.connected.store(true, std::sync::atomic::Ordering::Relaxed);
+            self.connected
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             log::info!("TCP transport connected on {}", self.address);
             Ok(())
         }
 
         async fn disconnect(&self) -> Result<()> {
-            self.connected.store(false, std::sync::atomic::Ordering::Relaxed);
+            self.connected
+                .store(false, std::sync::atomic::Ordering::Relaxed);
             log::info!("TCP transport disconnected");
             Ok(())
         }
@@ -268,13 +261,15 @@ pub mod nats {
     impl Transport for NatsTransport {
         async fn connect(&self) -> Result<()> {
             // TODO: Connect to NATS server
-            self.connected.store(true, std::sync::atomic::Ordering::Relaxed);
+            self.connected
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             log::info!("NATS transport connected to {}", self.url);
             Ok(())
         }
 
         async fn disconnect(&self) -> Result<()> {
-            self.connected.store(false, std::sync::atomic::Ordering::Relaxed);
+            self.connected
+                .store(false, std::sync::atomic::Ordering::Relaxed);
             log::info!("NATS transport disconnected");
             Ok(())
         }
@@ -307,12 +302,12 @@ mod tests {
     #[tokio::test]
     async fn test_local_transport() {
         let transport = LocalTransport::new();
-        
+
         assert!(!transport.is_connected());
-        
+
         transport.connect().await.unwrap();
         assert!(transport.is_connected());
-        
+
         transport.disconnect().await.unwrap();
         assert!(!transport.is_connected());
     }

@@ -11,10 +11,10 @@ pub fn generate_node_id() -> String {
         .unwrap_or_else(|_| std::ffi::OsString::from("unknown"))
         .to_string_lossy()
         .to_string();
-    
+
     let process_id = std::process::id();
     let random: u32 = rand::random();
-    
+
     format!("{}-{}-{}", hostname, process_id, random)
 }
 
@@ -75,21 +75,24 @@ pub fn match_pattern(text: &str, pattern: &str) -> bool {
     if pattern == "*" {
         return true;
     }
-    
+
     if pattern.contains('*') {
         let regex_pattern = pattern.replace('*', ".*");
         if let Ok(regex) = regex::Regex::new(&format!("^{}$", regex_pattern)) {
             return regex.is_match(text);
         }
     }
-    
+
     text == pattern
 }
 
 /// Flatten nested values in a JSON object
-pub fn flatten_object(obj: &serde_json::Value, prefix: &str) -> std::collections::HashMap<String, serde_json::Value> {
+pub fn flatten_object(
+    obj: &serde_json::Value,
+    prefix: &str,
+) -> std::collections::HashMap<String, serde_json::Value> {
     let mut result = std::collections::HashMap::new();
-    
+
     match obj {
         serde_json::Value::Object(map) => {
             for (key, value) in map {
@@ -98,7 +101,7 @@ pub fn flatten_object(obj: &serde_json::Value, prefix: &str) -> std::collections
                 } else {
                     format!("{}.{}", prefix, key)
                 };
-                
+
                 match value {
                     serde_json::Value::Object(_) => {
                         let nested = flatten_object(value, &new_key);
@@ -114,7 +117,7 @@ pub fn flatten_object(obj: &serde_json::Value, prefix: &str) -> std::collections
             result.insert(prefix.to_string(), obj.clone());
         }
     }
-    
+
     result
 }
 
@@ -133,7 +136,13 @@ pub fn remove_duplicates<T: PartialEq + Clone>(vec: Vec<T>) -> Vec<T> {
 pub fn sanitize_identifier(input: &str) -> String {
     input
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -190,7 +199,7 @@ mod tests {
         let id = generate_node_id();
         assert!(!id.is_empty());
         assert!(id.contains('-'));
-        
+
         // Should be unique
         let id2 = generate_node_id();
         assert_ne!(id, id2);
@@ -207,15 +216,24 @@ mod tests {
     #[test]
     fn test_parse_service_name() {
         assert_eq!(parse_service_name("service"), ("service".to_string(), None));
-        assert_eq!(parse_service_name("v1.service"), ("service".to_string(), Some("1".to_string())));
-        assert_eq!(parse_service_name("v2.0.service"), ("service".to_string(), Some("2.0".to_string())));
+        assert_eq!(
+            parse_service_name("v1.service"),
+            ("service".to_string(), Some("1".to_string()))
+        );
+        assert_eq!(
+            parse_service_name("v2.0.service"),
+            ("service".to_string(), Some("2.0".to_string()))
+        );
     }
 
     #[test]
     fn test_create_versioned_name() {
         assert_eq!(create_versioned_name("service", None), "service");
         assert_eq!(create_versioned_name("service", Some("1")), "v1.service");
-        assert_eq!(create_versioned_name("service", Some("2.0")), "v2.0.service");
+        assert_eq!(
+            create_versioned_name("service", Some("2.0")),
+            "v2.0.service"
+        );
     }
 
     #[test]
@@ -277,14 +295,17 @@ mod tests {
 
         deep_merge(&mut base, &other);
 
-        assert_eq!(base, json!({
-            "a": 1,
-            "b": {
-                "c": 2,
-                "d": 3
-            },
-            "e": 4
-        }));
+        assert_eq!(
+            base,
+            json!({
+                "a": 1,
+                "b": {
+                    "c": 2,
+                    "d": 3
+                },
+                "e": 4
+            })
+        );
     }
 
     #[test]
