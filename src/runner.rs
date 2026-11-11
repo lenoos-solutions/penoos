@@ -158,7 +158,8 @@ impl PenoosRunner {
                         if let Some(eq_pos) = line.find('=') {
                             let key = line[..eq_pos].trim();
                             let value = line[eq_pos + 1..].trim();
-                            env::set_var(key, value);
+                            // SAFETY: set_var races with concurrent env reads. It runs inside the tokio runtime in `_run`, so this is not yet sound.
+                            unsafe { env::set_var(key, value) };
                         }
                     }
                 }
@@ -270,7 +271,7 @@ impl PenoosRunner {
                     let child_key = &config_key[dot_pos + 1..];
                     
                     if let Some(parent_value) = config.get_mut(parent_key) {
-                        if let serde_json::Value::Object(ref mut obj) = parent_value {
+                        if let serde_json::Value::Object(obj) = parent_value {
                             obj.insert(child_key.to_string(), normalized_value);
                         }
                     } else {

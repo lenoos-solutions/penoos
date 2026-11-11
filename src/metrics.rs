@@ -94,7 +94,7 @@ impl MetricsRegistry {
         }
         
         if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Counter(ref mut counter) = metric.value_mut() {
+            if let MetricValue::Counter(counter) = metric.value_mut() {
                 *counter += value;
             }
         }
@@ -106,7 +106,7 @@ impl MetricsRegistry {
         }
         
         if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Gauge(ref mut gauge) = metric.value_mut() {
+            if let MetricValue::Gauge(gauge) = metric.value_mut() {
                 *gauge = value;
             }
         }
@@ -118,7 +118,7 @@ impl MetricsRegistry {
         }
         
         if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Histogram { ref mut values, .. } = metric.value_mut() {
+            if let MetricValue::Histogram { values, .. } = metric.value_mut() {
                 values.push(value);
             }
         }
@@ -130,7 +130,7 @@ impl MetricsRegistry {
         }
         
         if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Info(ref mut info) = metric.value_mut() {
+            if let MetricValue::Info(info) = metric.value_mut() {
                 *info = value.to_string();
             }
         }

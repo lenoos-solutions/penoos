@@ -30,7 +30,7 @@ new tests go in `tests/` and `benches/`.
 
 ## Language rules
 
-1. Edition 2021 is set in `Cargo.toml`. Do not lower it. Set `rust-version` (MSRV) before the first release.
+1. Edition 2024 is set in `Cargo.toml`. Do not lower it. Set `rust-version` (MSRV) before the first release.
 2. Public types are `Send + Sync` unless there is a documented reason otherwise.
 3. Prefer borrowing (`&str`, `&[T]`) over owned types in function arguments.
 4. Return `Result<T, PenoosError>` (re-exported as `penoos::Result`) from fallible functions. Do not return `Option` where an error reason matters.

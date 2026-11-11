@@ -154,7 +154,7 @@ pub fn get_memory_usage() -> Option<f64> {
 /// Deep merge two JSON values
 pub fn deep_merge(base: &mut serde_json::Value, other: &serde_json::Value) {
     match (base, other) {
-        (serde_json::Value::Object(ref mut base_map), serde_json::Value::Object(other_map)) => {
+        (serde_json::Value::Object(base_map), serde_json::Value::Object(other_map)) => {
             for (key, value) in other_map {
                 if let Some(base_value) = base_map.get_mut(key) {
                     deep_merge(base_value, value);
