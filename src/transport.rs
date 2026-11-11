@@ -182,7 +182,7 @@ impl Transport for LocalTransport {
 pub mod tcp {
     use super::*;
     use std::net::SocketAddr;
-    use tokio::net::{TcpListener, TcpStream};
+    use tokio::net::TcpListener;
 
     pub struct TcpTransport {
         address: SocketAddr,
@@ -243,7 +243,6 @@ pub mod nats {
 
     pub struct NatsTransport {
         url: String,
-        client: Option<nats::Connection>,
         connected: std::sync::atomic::AtomicBool,
     }
 
@@ -251,7 +250,6 @@ pub mod nats {
         pub fn new(url: &str) -> Self {
             Self {
                 url: url.to_string(),
-                client: None,
                 connected: std::sync::atomic::AtomicBool::new(false),
             }
         }

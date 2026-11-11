@@ -40,14 +40,12 @@ pub struct MessagePackSerializer;
 #[cfg(feature = "msgpack")]
 impl Serializer for MessagePackSerializer {
     fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
-        use rmp_serde;
         rmp_serde::to_vec(value).map_err(|e| crate::errors::PenoosError::SerializationError {
             message: format!("MessagePack serialization error: {}", e),
         })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Value> {
-        use rmp_serde;
         rmp_serde::from_slice(data).map_err(|e| crate::errors::PenoosError::SerializationError {
             message: format!("MessagePack deserialization error: {}", e),
         })

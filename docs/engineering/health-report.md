@@ -22,7 +22,7 @@ in this document and update the numbers when a remediation PR lands.
 | Format | `cargo fmt --check` | 713 diff hunks | **Fail** |
 | Clippy (lib test target) | `cargo clippy --all-targets -- -D warnings` | Hard error `approximate value of f{32,64}::consts::PI`, about 30 warnings | **Fail** |
 | `tcp-transport` feature | `cargo check --features tcp-transport` | Compiles | OK |
-| `nats-transport` feature | `cargo check --features nats-transport` | `cannot find type 'Connection' in module 'nats'` | **Fail** |
+| `nats-transport` feature | `cargo check --features nats-transport` | Compiles (stub) | **OK** |
 | No default features | `cargo check --no-default-features` | Compiles | OK |
 
 ## Forbidden-pattern counts in `src/`
@@ -58,7 +58,6 @@ Each item is a separate pull request so that history stays reviewable.
 | P0 | Run `cargo fmt` once, in a dedicated formatting-only commit | `cargo fmt --check` passes |
 | P1 | Clear clippy warnings; enable `-D warnings` in CI | Clippy passes with `-D warnings` |
 | P1 | Replace `todo!()` in `TcpTransport` with errors | No `todo!(` in `src/transport.rs` |
-| P1 | Fix or feature-gate `nats-transport` | `cargo check --features nats-transport` passes |
 | P2 | Replace `.unwrap()` in non-test code | Count in non-test code is 0, enforced by a lint |
 | P2 | Remove `src/lib_old.rs`, `src/lib_new.rs`, empty placeholder dirs | No dead files in `src/` |
 | P2 | Wire `MiddlewareManager` into the broker (G1) | Integration test asserts hook order |

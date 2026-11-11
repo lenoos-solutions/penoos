@@ -148,7 +148,7 @@ changes behaviour that users may rely on, so fixes go through an issue and an AD
 | G3 | Two transport abstractions | `transport::Transport` (used by broker) vs `transporters::Transporter` (unused by broker) | Duplicated concepts; unclear which backend is supported |
 | G4 | `emit` is local-only | `broker.rs` `emit` iterates only `self.services` | Remote subscribers receive events only via `broadcast` |
 | G5 | Dead files | `src/lib_old.rs`, `src/lib_new.rs` not in module tree | Confusing for readers and search tools |
-| G6 | TCP and NATS transports panic or do not compile | `TcpTransport::call`, `broadcast`, `send_to_node` are `todo!()`; `--features nats-transport` fails (`nats::Connection` unresolved, no `nats` crate in `Cargo.toml`) | A remote call can panic at runtime; the NATS feature breaks the build |
+| G6 | TCP transport panics | `TcpTransport::call`, `broadcast`, `send_to_node` are `todo!()` | A remote call can panic at runtime |
 | G7 | Transporter backends are stubs | `src/transporters/{tcp,nats,redis}.rs` contain TODO placeholders and are not wired to the broker | No working discovery, heartbeat, or pub/sub backend |
 | G8 | Placeholder module directories | Empty `src/middlewares/{debugging,transmit}`, `src/metrics/{reporters,types}`, `src/registry/discoverers`, `src/validators`, `test/{unit,e2e,integration}`, `benchmark/{suites,data}`; `src/serializers/` (empty, sibling of `serializers.rs`) | Misleading structure; `test/` is not auto-discovered by Cargo |
 

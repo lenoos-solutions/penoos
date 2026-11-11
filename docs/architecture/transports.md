@@ -60,7 +60,7 @@ own feature flag.
 |---------|--------------|----------|-----------|-----------------------|-------|
 | `LocalTransport` (`transport.rs`) | none | Yes | Yes | Yes (in-process) | Default for tests and single-node use |
 | `TcpTransport` (`transport.rs`) | `tcp-transport` | Yes | Binds listener, no peer protocol | **`todo!()` panic** | Do not use in production |
-| `NatsTransport` (`transport.rs`) | `nats-transport` | **No**: `nats::Connection` unresolved | Flag only | **`todo!()` panic** | Dependency missing (G6) |
+| `NatsTransport` (`transport.rs`) | `nats-transport` | Yes | Flag only | Stub | No NATS client dependency yet (G7) |
 | `transporters::memory` | none | Yes | Yes | Covered by 3 tests | In-process event bus |
 | `transporters::tcp` / `nats` / `redis` | none | Yes | Stub | **`TODO` stubs** | Not wired to broker (G3, G7) |
 

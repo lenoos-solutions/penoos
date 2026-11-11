@@ -40,6 +40,7 @@ hostname = "0.4.2"
 rand = "0.10.3"
 clap = { version = "4.0", features = ["derive"] }
 toml = "1.2.1+spec-1.1.0"
+rmp-serde = { version = "1", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -51,7 +52,7 @@ redis-cache = ["redis"]
 bincode-serializer = ["bincode"]
 tcp-transport = []
 nats-transport = []
-msgpack = []
+msgpack = ["dep:rmp-serde"]
 
 
 
