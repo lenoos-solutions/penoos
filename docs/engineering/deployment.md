@@ -14,7 +14,7 @@ Rust workflow is green. The Rust workflow is `.github/workflows/rust-ci.yml`.
 | `fmt` | `cargo fmt --all -- --check` |
 | `clippy` | `cargo clippy --all-targets -- -D warnings` (default features) |
 | `test` | `cargo test` (unit, integration, doc; default features) |
-| `features` | `cargo check` for `--no-default-features`, `--features tcp-transport`, `--features nats-transport`, and `--features msgpack`. `cargo test --all-features` is the release gate |
+| `features` | `cargo check` for `--no-default-features`, `--features tcp-transport`, `--features nats-transport`, `--features msgpack`, `--features oxicode-serializer`, `--features wincode-serializer`, and `--features postcard-serializer`. `cargo test --all-features` is the release gate |
 | `docs` | `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps` |
 | `audit` | `cargo audit` |
 

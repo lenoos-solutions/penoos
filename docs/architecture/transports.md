@@ -50,9 +50,20 @@ classDiagram
     TransportPacket ..> EventInfo
 ```
 
-Packet payloads serialize with the serializers in `src/serializers.rs`. The
-`bincode-serializer` feature is on by default; `msgpack` is available behind its
-own feature flag.
+Packet payloads serialize with the serializers in `src/serializers.rs`. JSON is
+always available. Each binary codec is opt-in behind its own feature flag:
+
+| Serializer | Feature flag | Content type | Encoding |
+|------------|--------------|--------------|----------|
+| `json` | (always on) | `application/json` | JSON text |
+| `msgpack` | `msgpack` | `application/msgpack` | MessagePack via `rmp-serde` |
+| `oxicode` | `oxicode-serializer` | `application/octet-stream` | Compact binary via oxicode serde, standard config |
+| `wincode` | `wincode-serializer` | `application/octet-stream` | JSON text framed by wincode (no serde integration) |
+| `postcard` | `postcard-serializer` | `application/octet-stream` | Compact binary via postcard |
+
+The binary codecs (`oxicode`, `postcard`) encode a `WireValue` mirror of
+`serde_json::Value`, because `Value` needs `deserialize_any`, which non-self-describing
+formats do not support.
 
 ## Backend status
 

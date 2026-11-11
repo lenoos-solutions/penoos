@@ -30,7 +30,7 @@ cargo test --test security_*   # security test suite
 
 Place them in `tests/security_*.rs`. Each must cover one of: oversized packet
 rejected, unknown protocol version rejected, unauthorized call rejected, rate
-limit enforced, malformed JSON or bincode rejected without panic.
+limit enforced, malformed JSON or malformed binary payloads (oxicode, postcard, wincode) rejected without panic.
 
 ## Reporting
 

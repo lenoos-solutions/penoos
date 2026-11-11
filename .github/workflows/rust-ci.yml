@@ -50,7 +50,9 @@ jobs:
       - run: cargo check --no-default-features --features tcp-transport
       - run: cargo check --no-default-features --features nats-transport
       - run: cargo check --no-default-features --features msgpack
-
+      - run: cargo check --no-default-features --features oxicode-serializer
+      - run: cargo check --no-default-features --features wincode-serializer
+      - run: cargo check --no-default-features --features postcard-serializer
   docs:
     runs-on: ubuntu-latest
     steps:
