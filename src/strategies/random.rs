@@ -1,7 +1,7 @@
 //! Random load balancing strategy
 
 use async_trait::async_trait;
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 
 use super::{LoadBalancingStrategy, ServiceEndpoint};
 use crate::errors::Result;
@@ -27,7 +27,7 @@ impl LoadBalancingStrategy for RandomStrategy {
             return Ok(None);
         }
         
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let selected = available_endpoints.choose(&mut rng);
         
         Ok(selected.map(|e| (*e).clone()))

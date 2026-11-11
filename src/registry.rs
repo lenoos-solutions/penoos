@@ -241,7 +241,7 @@ impl ServiceRegistry {
             }
             LoadBalancingStrategy::Random => {
                 use rand::seq::SliceRandom;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
                 endpoints.shuffle(&mut rng);
                 endpoints
             }

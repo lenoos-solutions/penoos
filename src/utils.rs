@@ -3,7 +3,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hostname;
-use rand::Rng;
 use uuid::Uuid;
 
 /// Generate a unique node ID
@@ -14,7 +13,7 @@ pub fn generate_node_id() -> String {
         .to_string();
     
     let process_id = std::process::id();
-    let random: u32 = rand::thread_rng().gen();
+    let random: u32 = rand::random();
     
     format!("{}-{}-{}", hostname, process_id, random)
 }
@@ -142,14 +141,14 @@ pub fn sanitize_identifier(input: &str) -> String {
 pub fn get_cpu_usage() -> Option<f64> {
     // This is a placeholder - in a real implementation you'd use
     // a crate like `sysinfo` to get actual CPU usage
-    Some(rand::thread_rng().gen_range(0.0..100.0))
+    Some(rand::random_range(0.0..100.0))
 }
 
 /// Calculate memory usage percentage (placeholder implementation)
 pub fn get_memory_usage() -> Option<f64> {
     // This is a placeholder - in a real implementation you'd use
     // a crate like `sysinfo` to get actual memory usage
-    Some(rand::thread_rng().gen_range(0.0..100.0))
+    Some(rand::random_range(0.0..100.0))
 }
 
 /// Deep merge two JSON values

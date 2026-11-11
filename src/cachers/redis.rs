@@ -12,7 +12,7 @@ use crate::errors::{Result, PenoosError};
 #[allow(dead_code)]
 pub struct RedisCacher {
     client: redis::Client,
-    connection: tokio::sync::Mutex<redis::aio::Connection>,
+    connection: tokio::sync::Mutex<redis::aio::MultiplexedConnection>,
     config: CacheConfig,
     stats: std::sync::Arc<tokio::sync::RwLock<CacheStats>>,
 }
@@ -26,7 +26,7 @@ impl RedisCacher {
                 message: format!("Failed to connect to Redis: {}", e) 
             })?;
             
-        let connection = client.get_async_connection().await
+        let connection = client.get_multiplexed_async_connection().await
             .map_err(|e| PenoosError::CacheError { 
                 message: format!("Failed to get Redis connection: {}", e) 
             })?;
@@ -98,7 +98,7 @@ impl Cacher for RedisCacher {
         
         if let Some(ttl_duration) = effective_ttl {
             let ttl_seconds = ttl_duration.as_secs();
-            conn.set_ex::<_, _, ()>(&prefixed_key, value_str, ttl_seconds as usize).await
+            conn.set_ex::<_, _, ()>(&prefixed_key, value_str, ttl_seconds).await
         } else {
             conn.set::<_, _, ()>(&prefixed_key, value_str).await
         }
