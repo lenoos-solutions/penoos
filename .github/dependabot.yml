@@ -4,17 +4,17 @@
 # https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
-updates:
+# updates:
   # Maintain dependencies for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+  # - package-ecosystem: "github-actions"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
 
-  # Maintain dependencies for npm
-  - package-ecosystem: "rust-toolchain"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    allow:
-      - dependency-type: "production"
+  # # Maintain dependencies for rust
+  # - package-ecosystem: "rust-toolchain"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   allow:
+  #     - dependency-type: "production"
