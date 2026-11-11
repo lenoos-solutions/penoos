@@ -1,15 +1,15 @@
 //! API Gateway example demonstrating HTTP-like service routing
-//! 
+//!
 //! This example shows how to create a gateway service that routes
 //! requests to different backend services based on URL patterns.
 
-use penoos::{ServiceBroker, Service, Context};
+use penoos::{Context, Service, ServiceBroker};
 use serde_json::json;
 
 #[tokio::main]
 async fn main() -> penoos::Result<()> {
     env_logger::init();
-    
+
     println!("🌐 Starting API Gateway example...");
 
     let mut broker = ServiceBroker::new()?;
@@ -70,49 +70,58 @@ async fn main() -> penoos::Result<()> {
         });
 
     // Create API Gateway service
-    let gateway_service = Service::new("gateway")
-        .action("route", |ctx: Context| {
-            let path = ctx.params().get("path").unwrap().as_str().unwrap();
-            let method = ctx.params().get("method").unwrap().as_str().unwrap();
-            let query = ctx.params().get("query").cloned().unwrap_or(json!({}));
-            let body = ctx.params().get("body").cloned().unwrap_or(json!({}));
-            
-            // Route based on path
-            let (service, action, params) = match (method, path) {
-                ("GET", "/users") => ("users", "list", json!({})),
-                ("GET", path) if path.starts_with("/users/") => {
-                    let id = path.strip_prefix("/users/").unwrap().parse::<u64>().unwrap_or(0);
-                    ("users", "get", json!({"id": id}))
-                },
-                ("POST", "/users") => ("users", "create", body),
-                ("GET", "/posts") => ("posts", "list", json!({})),
-                ("GET", path) if path.starts_with("/posts/") => {
-                    let id = path.strip_prefix("/posts/").unwrap().parse::<u64>().unwrap_or(0);
-                    ("posts", "get", json!({"id": id}))
-                },
-                _ => return Ok(json!({
+    let gateway_service = Service::new("gateway").action("route", |ctx: Context| {
+        let path = ctx.params().get("path").unwrap().as_str().unwrap();
+        let method = ctx.params().get("method").unwrap().as_str().unwrap();
+        let query = ctx.params().get("query").cloned().unwrap_or(json!({}));
+        let body = ctx.params().get("body").cloned().unwrap_or(json!({}));
+
+        // Route based on path
+        let (service, action, params) = match (method, path) {
+            ("GET", "/users") => ("users", "list", json!({})),
+            ("GET", path) if path.starts_with("/users/") => {
+                let id = path
+                    .strip_prefix("/users/")
+                    .unwrap()
+                    .parse::<u64>()
+                    .unwrap_or(0);
+                ("users", "get", json!({"id": id}))
+            }
+            ("POST", "/users") => ("users", "create", body),
+            ("GET", "/posts") => ("posts", "list", json!({})),
+            ("GET", path) if path.starts_with("/posts/") => {
+                let id = path
+                    .strip_prefix("/posts/")
+                    .unwrap()
+                    .parse::<u64>()
+                    .unwrap_or(0);
+                ("posts", "get", json!({"id": id}))
+            }
+            _ => {
+                return Ok(json!({
                     "error": "Not Found",
                     "code": 404,
                     "message": format!("Route {} {} not found", method, path)
-                }))
-            };
-
-            // Merge query parameters into params
-            let mut final_params = params.as_object().unwrap().clone();
-            if let Some(query_obj) = query.as_object() {
-                for (key, value) in query_obj {
-                    final_params.insert(key.clone(), value.clone());
-                }
+                }));
             }
+        };
 
-            Ok(json!({
-                "route": {
-                    "service": service,
-                    "action": action,
-                    "params": final_params
-                }
-            }))
-        });
+        // Merge query parameters into params
+        let mut final_params = params.as_object().unwrap().clone();
+        if let Some(query_obj) = query.as_object() {
+            for (key, value) in query_obj {
+                final_params.insert(key.clone(), value.clone());
+            }
+        }
+
+        Ok(json!({
+            "route": {
+                "service": service,
+                "action": action,
+                "params": final_params
+            }
+        }))
+    });
 
     // Register services
     broker.create_service(users_service).await?;
@@ -126,70 +135,111 @@ async fn main() -> penoos::Result<()> {
     println!("\n🌐 Simulating API requests...\n");
 
     // GET /users
-    let route_result = broker.call("gateway.route", json!({
-        "method": "GET",
-        "path": "/users",
-        "query": {},
-        "body": {}
-    })).await?;
-    
+    let route_result = broker
+        .call(
+            "gateway.route",
+            json!({
+                "method": "GET",
+                "path": "/users",
+                "query": {},
+                "body": {}
+            }),
+        )
+        .await?;
+
     let route_info = route_result.get("route").unwrap();
-    let users_result = broker.call(
-        &format!("{}.{}", route_info.get("service").unwrap().as_str().unwrap(), route_info.get("action").unwrap().as_str().unwrap()),
-        route_info.get("params").unwrap().clone()
-    ).await?;
-    
+    let users_result = broker
+        .call(
+            &format!(
+                "{}.{}",
+                route_info.get("service").unwrap().as_str().unwrap(),
+                route_info.get("action").unwrap().as_str().unwrap()
+            ),
+            route_info.get("params").unwrap().clone(),
+        )
+        .await?;
+
     println!("📡 GET /users");
     println!("Route: {}", serde_json::to_string_pretty(&route_result)?);
     println!("Response: {}", serde_json::to_string_pretty(&users_result)?);
 
     // GET /users/1
-    let route_result = broker.call("gateway.route", json!({
-        "method": "GET",
-        "path": "/users/1",
-        "query": {},
-        "body": {}
-    })).await?;
-    
+    let route_result = broker
+        .call(
+            "gateway.route",
+            json!({
+                "method": "GET",
+                "path": "/users/1",
+                "query": {},
+                "body": {}
+            }),
+        )
+        .await?;
+
     let route_info = route_result.get("route").unwrap();
-    let user_result = broker.call(
-        &format!("{}.{}", route_info.get("service").unwrap().as_str().unwrap(), route_info.get("action").unwrap().as_str().unwrap()),
-        route_info.get("params").unwrap().clone()
-    ).await?;
-    
+    let user_result = broker
+        .call(
+            &format!(
+                "{}.{}",
+                route_info.get("service").unwrap().as_str().unwrap(),
+                route_info.get("action").unwrap().as_str().unwrap()
+            ),
+            route_info.get("params").unwrap().clone(),
+        )
+        .await?;
+
     println!("\n📡 GET /users/1");
     println!("Route: {}", serde_json::to_string_pretty(&route_result)?);
     println!("Response: {}", serde_json::to_string_pretty(&user_result)?);
 
     // POST /users
-    let route_result = broker.call("gateway.route", json!({
-        "method": "POST",
-        "path": "/users",
-        "query": {},
-        "body": {
-            "name": "Alice Johnson",
-            "email": "alice@example.com"
-        }
-    })).await?;
-    
+    let route_result = broker
+        .call(
+            "gateway.route",
+            json!({
+                "method": "POST",
+                "path": "/users",
+                "query": {},
+                "body": {
+                    "name": "Alice Johnson",
+                    "email": "alice@example.com"
+                }
+            }),
+        )
+        .await?;
+
     let route_info = route_result.get("route").unwrap();
-    let create_result = broker.call(
-        &format!("{}.{}", route_info.get("service").unwrap().as_str().unwrap(), route_info.get("action").unwrap().as_str().unwrap()),
-        route_info.get("params").unwrap().clone()
-    ).await?;
-    
+    let create_result = broker
+        .call(
+            &format!(
+                "{}.{}",
+                route_info.get("service").unwrap().as_str().unwrap(),
+                route_info.get("action").unwrap().as_str().unwrap()
+            ),
+            route_info.get("params").unwrap().clone(),
+        )
+        .await?;
+
     println!("\n📡 POST /users");
     println!("Route: {}", serde_json::to_string_pretty(&route_result)?);
-    println!("Response: {}", serde_json::to_string_pretty(&create_result)?);
+    println!(
+        "Response: {}",
+        serde_json::to_string_pretty(&create_result)?
+    );
 
     // Test 404
-    let not_found = broker.call("gateway.route", json!({
-        "method": "GET",
-        "path": "/invalid",
-        "query": {},
-        "body": {}
-    })).await?;
-    
+    let not_found = broker
+        .call(
+            "gateway.route",
+            json!({
+                "method": "GET",
+                "path": "/invalid",
+                "query": {},
+                "body": {}
+            }),
+        )
+        .await?;
+
     println!("\n📡 GET /invalid (404 test)");
     println!("Response: {}", serde_json::to_string_pretty(&not_found)?);
 

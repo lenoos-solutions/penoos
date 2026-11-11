@@ -1,5 +1,5 @@
 //! File logger implementation for Penoos
-//! 
+//!
 //! This logger writes log messages to files with rotation support.
 
 use crate::errors::Result;
@@ -64,7 +64,8 @@ impl FileLogger {
             LogLevel::Fatal => "FATAL",
         };
 
-        self.config.format
+        self.config
+            .format
             .replace("{timestamp}", &timestamp.to_string())
             .replace("{level}", level_str)
             .replace("{message}", message)
@@ -77,7 +78,7 @@ impl FileLogger {
         }
 
         let formatted = self.format_message(level, message);
-        
+
         // Ensure directory exists
         if let Some(parent) = self.config.file_path.parent() {
             tokio::fs::create_dir_all(parent).await?;

@@ -1,10 +1,10 @@
 //! # Penoos - Microservices Framework for Rust
-//! 
+//!
 //! Penoos is a fast, modern and powerful microservices framework for Rust.
 //! It helps you to build efficient, reliable & scalable services.
-//! 
+//!
 //! ## Core Features
-//! 
+//!
 //! - **Async/await support** - Built on top of Tokio runtime
 //! - **Service Registry** - Dynamic service discovery
 //! - **Load Balancing** - Multiple strategies (round-robin, random, etc.)
@@ -13,13 +13,13 @@
 //! - **Pluggable Transporters** - NATS, Redis, TCP support
 //! - **Caching** - Built-in caching with multiple backends
 //! - **Metrics & Tracing** - Observability support
-//! 
+//!
 //! ## Quick Start
-//! 
+//!
 //! ```rust,no_run
 //! use penoos::{ServiceBroker, Service, Context, Result};
 //! use serde_json::json;
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
 //!     let mut broker = ServiceBroker::new()?;
@@ -43,35 +43,36 @@
 
 // Core modules
 pub mod broker;
-pub mod service;
-pub mod context;
-pub mod registry;
-pub mod errors;
-pub mod transport;
-pub mod runner;
 pub mod cache;
-pub mod metrics;
-pub mod tracing;
-pub mod utils;
-pub mod middleware;
-pub mod serializers;
-pub mod validators;
 pub mod constants;
+pub mod context;
+pub mod errors;
+pub mod metrics;
+pub mod middleware;
+pub mod registry;
+pub mod runner;
+pub mod serializers;
+pub mod service;
+pub mod tracing;
+pub mod transport;
+pub mod utils;
+pub mod validators;
 
 // Extended modules
 pub mod cachers;
-pub mod transporters;
 pub mod loggers;
-pub mod strategies;
+pub mod macros;
 pub mod mixins;
 pub mod reporters;
+pub mod strategies;
+pub mod transporters;
 
 // Re-exports for convenience
 pub use broker::ServiceBroker;
-pub use service::{Service, ServiceSchema, ActionHandler};
 pub use context::Context;
 pub use errors::{PenoosError, Result};
 pub use runner::PenoosRunner;
+pub use service::{ActionHandler, Service, ServiceSchema};
 
 // Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -114,8 +115,8 @@ impl Default for PenoosConfig {
                 max_delay: 1000,
                 factor: 2.0,
             },
-            heartbeat_interval: 5000,  // 5 seconds
-            heartbeat_timeout: 15000,  // 15 seconds
+            heartbeat_interval: 5000, // 5 seconds
+            heartbeat_timeout: 15000, // 15 seconds
             metrics_enabled: true,
             tracing_enabled: true,
         }

@@ -54,7 +54,8 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        self.metrics.insert(name.to_string(), MetricValue::Counter(0));
+        self.metrics
+            .insert(name.to_string(), MetricValue::Counter(0));
         log::debug!("Registered counter metric: {} - {}", name, description);
     }
 
@@ -62,7 +63,8 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        self.metrics.insert(name.to_string(), MetricValue::Gauge(0.0));
+        self.metrics
+            .insert(name.to_string(), MetricValue::Gauge(0.0));
         log::debug!("Registered gauge metric: {} - {}", name, description);
     }
 
@@ -84,7 +86,8 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        self.metrics.insert(name.to_string(), MetricValue::Info(String::new()));
+        self.metrics
+            .insert(name.to_string(), MetricValue::Info(String::new()));
         log::debug!("Registered info metric: {} - {}", name, description);
     }
 
@@ -92,11 +95,11 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        
-        if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Counter(ref mut counter) = metric.value_mut() {
-                *counter += value;
-            }
+
+        if let Some(mut metric) = self.metrics.get_mut(name)
+            && let MetricValue::Counter(counter) = metric.value_mut()
+        {
+            *counter += value;
         }
     }
 
@@ -104,11 +107,11 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        
-        if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Gauge(ref mut gauge) = metric.value_mut() {
-                *gauge = value;
-            }
+
+        if let Some(mut metric) = self.metrics.get_mut(name)
+            && let MetricValue::Gauge(gauge) = metric.value_mut()
+        {
+            *gauge = value;
         }
     }
 
@@ -116,11 +119,11 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        
-        if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Histogram { ref mut values, .. } = metric.value_mut() {
-                values.push(value);
-            }
+
+        if let Some(mut metric) = self.metrics.get_mut(name)
+            && let MetricValue::Histogram { values, .. } = metric.value_mut()
+        {
+            values.push(value);
         }
     }
 
@@ -128,11 +131,11 @@ impl MetricsRegistry {
         if !self.enabled {
             return;
         }
-        
-        if let Some(mut metric) = self.metrics.get_mut(name) {
-            if let MetricValue::Info(ref mut info) = metric.value_mut() {
-                *info = value.to_string();
-            }
+
+        if let Some(mut metric) = self.metrics.get_mut(name)
+            && let MetricValue::Info(info) = metric.value_mut()
+        {
+            *info = value.to_string();
         }
     }
 
@@ -180,7 +183,8 @@ impl Timer {
 
     pub fn stop(self) -> Duration {
         let duration = self.start.elapsed();
-        self.registry.observe_histogram(&self.name, duration.as_secs_f64());
+        self.registry
+            .observe_histogram(&self.name, duration.as_secs_f64());
         duration
     }
 }

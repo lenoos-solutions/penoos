@@ -1,5 +1,5 @@
 //! Service Broker - The core component of Penoos framework
-//! 
+//!
 //! The ServiceBroker is the main component of Penoos. It handles communication
 //! between services, manages the service registry, and coordinates all framework features.
 
@@ -14,15 +14,15 @@ use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::{
+    PenoosConfig,
+    cache::CacheManager,
     context::Context,
     errors::{PenoosError, Result},
+    metrics::MetricsRegistry,
     registry::ServiceRegistry,
     service::Service,
     transport::Transport,
-    cache::CacheManager,
-    metrics::MetricsRegistry,
     utils,
-    PenoosConfig,
 };
 
 /// Options for calling actions
@@ -98,7 +98,10 @@ impl ServiceBroker {
 
     /// Create a new ServiceBroker with custom configuration
     pub fn with_config(config: PenoosConfig) -> Result<Self> {
-        let node_id = config.node_id.clone().unwrap_or_else(|| utils::generate_node_id());
+        let node_id = config
+            .node_id
+            .clone()
+            .unwrap_or_else(utils::generate_node_id);
         let instance_id = Uuid::new_v4().to_string();
         let (event_sender, _) = broadcast::channel(1000);
 
@@ -127,7 +130,14 @@ impl ServiceBroker {
         log::info!("Starting ServiceBroker...");
         log::info!("Penoos v{}", crate::VERSION);
         log::info!("Node ID: {}", self.node_id);
-        log::info!("Namespace: {}", if self.namespace.is_empty() { "<not defined>" } else { &self.namespace });
+        log::info!(
+            "Namespace: {}",
+            if self.namespace.is_empty() {
+                "<not defined>"
+            } else {
+                &self.namespace
+            }
+        );
 
         // Initialize transport if configured
         if let Some(transport) = &self.transport {
@@ -143,7 +153,9 @@ impl ServiceBroker {
         *self.started.write() = true;
 
         // Emit started event
-        let _ = self.event_sender.send(InternalEvent::ServiceStarted(self.node_id.clone()));
+        let _ = self
+            .event_sender
+            .send(InternalEvent::ServiceStarted(self.node_id.clone()));
 
         log::info!("✓ ServiceBroker started successfully");
         Ok(())
@@ -177,10 +189,10 @@ impl ServiceBroker {
     /// Create and register a new service
     pub async fn create_service(&mut self, service: Service) -> Result<Arc<Service>> {
         let service_arc = Arc::new(service);
-        
+
         // Register service in the registry
         self.registry.register_local_service(&service_arc).await?;
-        
+
         // Add to local services
         self.services.write().push(service_arc.clone());
 
@@ -201,11 +213,17 @@ impl ServiceBroker {
 
     /// Call an action
     pub async fn call(&self, action_name: &str, params: Value) -> Result<Value> {
-        self.call_with_options(action_name, params, CallOptions::default()).await
+        self.call_with_options(action_name, params, CallOptions::default())
+            .await
     }
 
     /// Call an action with options
-    pub async fn call_with_options(&self, action_name: &str, params: Value, options: CallOptions) -> Result<Value> {
+    pub async fn call_with_options(
+        &self,
+        action_name: &str,
+        params: Value,
+        options: CallOptions,
+    ) -> Result<Value> {
         // Create context
         let context = Context::new(
             self.node_id.clone(),
@@ -236,7 +254,13 @@ impl ServiceBroker {
             MCallDefinition::Array(calls) => {
                 let mut results = Vec::new();
                 for call in calls {
-                    let result = self.call_with_options(&call.action, call.params, call.options.unwrap_or_default()).await?;
+                    let result = self
+                        .call_with_options(
+                            &call.action,
+                            call.params,
+                            call.options.unwrap_or_default(),
+                        )
+                        .await?;
                     results.push(result);
                 }
                 Ok(serde_json::to_value(results)?)
@@ -244,7 +268,13 @@ impl ServiceBroker {
             MCallDefinition::Object(calls) => {
                 let mut results = HashMap::new();
                 for (key, call) in calls {
-                    let result = self.call_with_options(&call.action, call.params, call.options.unwrap_or_default()).await?;
+                    let result = self
+                        .call_with_options(
+                            &call.action,
+                            call.params,
+                            call.options.unwrap_or_default(),
+                        )
+                        .await?;
                     results.insert(key, result);
                 }
                 Ok(serde_json::to_value(results)?)
@@ -264,7 +294,7 @@ impl ServiceBroker {
                     payload.clone(),
                     HashMap::new(),
                 );
-                
+
                 // Execute handler in background
                 let handler = handler.clone();
                 let event_name_owned = event_name.to_string();
@@ -292,7 +322,11 @@ impl ServiceBroker {
     }
 
     /// Wait for services to be available
-    pub async fn wait_for_services(&self, service_names: &[&str], timeout: Option<Duration>) -> Result<()> {
+    pub async fn wait_for_services(
+        &self,
+        service_names: &[&str],
+        timeout: Option<Duration>,
+    ) -> Result<()> {
         let timeout = timeout.unwrap_or(Duration::from_secs(30));
         let start = std::time::Instant::now();
 
@@ -344,7 +378,7 @@ impl ServiceBroker {
     /// Start a specific service
     async fn start_service(&self, service: &Arc<Service>) -> Result<()> {
         log::info!("Starting service '{}'", service.name);
-        
+
         // Call service started hook if it exists
         if let Some(started_hook) = &service.schema.started {
             started_hook()?;
@@ -357,7 +391,7 @@ impl ServiceBroker {
     /// Stop a specific service
     async fn stop_service(&self, service: &Arc<Service>) -> Result<()> {
         log::info!("Stopping service '{}'", service.name);
-        
+
         // Call service stopped hook if it exists
         if let Some(stopped_hook) = &service.schema.stopped {
             stopped_hook()?;

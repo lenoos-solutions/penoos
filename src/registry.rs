@@ -58,7 +58,7 @@ impl ServiceRegistry {
     /// Register a local service
     pub async fn register_local_service(&self, service: &Arc<Service>) -> Result<()> {
         let mut services = self.local_services.write();
-        
+
         if services.contains_key(&service.name) {
             return Err(PenoosError::ServiceAlreadyExists {
                 service: service.name.clone(),
@@ -73,7 +73,7 @@ impl ServiceRegistry {
     /// Unregister a local service
     pub async fn unregister_local_service(&self, service_name: &str) -> Result<()> {
         let mut services = self.local_services.write();
-        
+
         if services.remove(service_name).is_some() {
             log::debug!("Unregistered local service: {}", service_name);
             Ok(())
@@ -88,7 +88,11 @@ impl ServiceRegistry {
     pub async fn register_remote_service(&self, service_info: RemoteServiceInfo) -> Result<()> {
         let key = format!("{}:{}", service_info.node_id, service_info.name);
         self.remote_services.insert(key, service_info.clone());
-        log::debug!("Registered remote service: {} on node {}", service_info.name, service_info.node_id);
+        log::debug!(
+            "Registered remote service: {} on node {}",
+            service_info.name,
+            service_info.node_id
+        );
         Ok(())
     }
 
@@ -96,7 +100,11 @@ impl ServiceRegistry {
     pub async fn unregister_remote_service(&self, node_id: &str, service_name: &str) -> Result<()> {
         let key = format!("{}:{}", node_id, service_name);
         if self.remote_services.remove(&key).is_some() {
-            log::debug!("Unregistered remote service: {} from node {}", service_name, node_id);
+            log::debug!(
+                "Unregistered remote service: {} from node {}",
+                service_name,
+                node_id
+            );
             Ok(())
         } else {
             Err(PenoosError::ServiceNotFound {
@@ -143,7 +151,10 @@ impl ServiceRegistry {
 
     /// Get all remote services
     pub fn get_all_remote_services(&self) -> Vec<RemoteServiceInfo> {
-        self.remote_services.iter().map(|entry| entry.value().clone()).collect()
+        self.remote_services
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect()
     }
 
     /// Register a node
@@ -154,9 +165,10 @@ impl ServiceRegistry {
     /// Unregister a node
     pub fn unregister_node(&self, node_id: &str) {
         self.nodes.remove(node_id);
-        
+
         // Remove all services from this node
-        self.remote_services.retain(|key, _| !key.starts_with(&format!("{}:", node_id)));
+        self.remote_services
+            .retain(|key, _| !key.starts_with(&format!("{}:", node_id)));
     }
 
     /// Get node information
@@ -166,7 +178,10 @@ impl ServiceRegistry {
 
     /// Get all nodes
     pub fn get_all_nodes(&self) -> Vec<NodeInfo> {
-        self.nodes.iter().map(|entry| entry.value().clone()).collect()
+        self.nodes
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect()
     }
 
     /// Update node heartbeat
@@ -188,7 +203,11 @@ impl ServiceRegistry {
         let local_count = self.local_services.read().len();
         let remote_count = self.remote_services.len();
         let node_count = self.nodes.len();
-        let available_nodes = self.nodes.iter().filter(|entry| entry.value().available).count();
+        let available_nodes = self
+            .nodes
+            .iter()
+            .filter(|entry| entry.value().available)
+            .count();
 
         RegistryStatistics {
             local_services: local_count,
@@ -199,7 +218,11 @@ impl ServiceRegistry {
     }
 
     /// Find services for load balancing
-    pub fn find_services(&self, service_name: &str, strategy: LoadBalancingStrategy) -> Vec<ServiceEndpoint> {
+    pub fn find_services(
+        &self,
+        service_name: &str,
+        strategy: LoadBalancingStrategy,
+    ) -> Vec<ServiceEndpoint> {
         let mut endpoints = Vec::new();
 
         // Add local service if exists
@@ -215,16 +238,16 @@ impl ServiceRegistry {
 
         // Add remote services
         for remote_service in self.get_remote_services(service_name) {
-            if let Some(node) = self.get_node(&remote_service.node_id) {
-                if node.available {
-                    endpoints.push(ServiceEndpoint {
-                        service_name: remote_service.name,
-                        node_id: remote_service.node_id,
-                        is_local: false,
-                        cpu_usage: node.cpu_usage,
-                        response_time: None, // TODO: Implement response time tracking
-                    });
-                }
+            if let Some(node) = self.get_node(&remote_service.node_id)
+                && node.available
+            {
+                endpoints.push(ServiceEndpoint {
+                    service_name: remote_service.name,
+                    node_id: remote_service.node_id,
+                    is_local: false,
+                    cpu_usage: node.cpu_usage,
+                    response_time: None, // TODO: Implement response time tracking
+                });
             }
         }
 
@@ -233,7 +256,11 @@ impl ServiceRegistry {
     }
 
     /// Apply load balancing strategy
-    fn apply_load_balancing_strategy(&self, mut endpoints: Vec<ServiceEndpoint>, strategy: LoadBalancingStrategy) -> Vec<ServiceEndpoint> {
+    fn apply_load_balancing_strategy(
+        &self,
+        mut endpoints: Vec<ServiceEndpoint>,
+        strategy: LoadBalancingStrategy,
+    ) -> Vec<ServiceEndpoint> {
         match strategy {
             LoadBalancingStrategy::RoundRobin => {
                 // TODO: Implement proper round-robin with state
@@ -241,7 +268,7 @@ impl ServiceRegistry {
             }
             LoadBalancingStrategy::Random => {
                 use rand::seq::SliceRandom;
-                let mut rng = rand::thread_rng();
+                let mut rng = rand::rng();
                 endpoints.shuffle(&mut rng);
                 endpoints
             }
@@ -249,7 +276,9 @@ impl ServiceRegistry {
                 endpoints.sort_by(|a, b| {
                     let a_cpu = a.cpu_usage.unwrap_or(0.0);
                     let b_cpu = b.cpu_usage.unwrap_or(0.0);
-                    a_cpu.partial_cmp(&b_cpu).unwrap_or(std::cmp::Ordering::Equal)
+                    a_cpu
+                        .partial_cmp(&b_cpu)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 endpoints
             }
@@ -257,12 +286,14 @@ impl ServiceRegistry {
                 endpoints.sort_by(|a, b| {
                     let a_time = a.response_time.unwrap_or(f64::MAX);
                     let b_time = b.response_time.unwrap_or(f64::MAX);
-                    a_time.partial_cmp(&b_time).unwrap_or(std::cmp::Ordering::Equal)
+                    a_time
+                        .partial_cmp(&b_time)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
                 endpoints
             }
             LoadBalancingStrategy::PreferLocal => {
-                endpoints.sort_by(|a, b| b.is_local.cmp(&a.is_local));
+                endpoints.sort_by_key(|e| std::cmp::Reverse(e.is_local));
                 endpoints
             }
         }
@@ -280,8 +311,9 @@ pub struct ServiceEndpoint {
 }
 
 /// Load balancing strategies
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum LoadBalancingStrategy {
+    #[default]
     RoundRobin,
     Random,
     CpuUsage,
@@ -304,12 +336,6 @@ impl Default for ServiceRegistry {
     }
 }
 
-impl Default for LoadBalancingStrategy {
-    fn default() -> Self {
-        LoadBalancingStrategy::RoundRobin
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -329,14 +355,17 @@ mod tests {
         assert!(result.is_err());
 
         // Unregister service
-        registry.unregister_local_service("test-service").await.unwrap();
+        registry
+            .unregister_local_service("test-service")
+            .await
+            .unwrap();
         assert!(!registry.has_service("test-service").await);
     }
 
     #[tokio::test]
     async fn test_remote_service_registration() {
         let registry = ServiceRegistry::new();
-        
+
         let remote_service = RemoteServiceInfo {
             name: "remote-service".to_string(),
             version: Some("1.0".to_string()),
@@ -347,7 +376,10 @@ mod tests {
             metadata: HashMap::new(),
         };
 
-        registry.register_remote_service(remote_service).await.unwrap();
+        registry
+            .register_remote_service(remote_service)
+            .await
+            .unwrap();
         assert!(registry.has_service("remote-service").await);
 
         let remote_services = registry.get_remote_services("remote-service");
@@ -358,7 +390,7 @@ mod tests {
     #[test]
     fn test_load_balancing_strategies() {
         let registry = ServiceRegistry::new();
-        
+
         let endpoints = vec![
             ServiceEndpoint {
                 service_name: "test".to_string(),
@@ -377,11 +409,13 @@ mod tests {
         ];
 
         // Test prefer local strategy
-        let result = registry.apply_load_balancing_strategy(endpoints.clone(), LoadBalancingStrategy::PreferLocal);
+        let result = registry
+            .apply_load_balancing_strategy(endpoints.clone(), LoadBalancingStrategy::PreferLocal);
         assert!(result[0].is_local);
 
         // Test CPU usage strategy
-        let result = registry.apply_load_balancing_strategy(endpoints.clone(), LoadBalancingStrategy::CpuUsage);
+        let result = registry
+            .apply_load_balancing_strategy(endpoints.clone(), LoadBalancingStrategy::CpuUsage);
         assert_eq!(result[0].node_id, "node1"); // Lower CPU usage should come first
     }
 }

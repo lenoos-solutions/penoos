@@ -108,7 +108,11 @@ pub enum PenoosError {
 
     /// Custom error with error code
     #[error("Error {code}: {message}")]
-    Custom { code: u32, message: String, data: Option<serde_json::Value> },
+    Custom {
+        code: u32,
+        message: String,
+        data: Option<serde_json::Value>,
+    },
 }
 
 impl PenoosError {
@@ -311,7 +315,11 @@ pub struct MaxCallLevelError {
 
 impl fmt::Display for MaxCallLevelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Max call level exceeded. Current: {}, Max: {}", self.current, self.max)
+        write!(
+            f,
+            "Max call level exceeded. Current: {}, Max: {}",
+            self.current, self.max
+        )
     }
 }
 
@@ -331,14 +339,28 @@ mod tests {
     fn test_retryable() {
         assert!(PenoosError::service_not_available("test").is_retryable());
         assert!(PenoosError::timeout("test", 1000).is_retryable());
-        assert!(!PenoosError::CircuitBreakerOpen { service: "test".to_string() }.is_retryable());
+        assert!(
+            !PenoosError::CircuitBreakerOpen {
+                service: "test".to_string()
+            }
+            .is_retryable()
+        );
         assert!(!PenoosError::validation_error("test").is_retryable());
     }
 
     #[test]
     fn test_error_types() {
-        assert_eq!(PenoosError::service_not_found("test").error_type(), "SERVICE_NOT_FOUND");
-        assert_eq!(PenoosError::timeout("test", 1000).error_type(), "REQUEST_TIMEOUT");
-        assert_eq!(PenoosError::validation_error("test").error_type(), "VALIDATION_ERROR");
+        assert_eq!(
+            PenoosError::service_not_found("test").error_type(),
+            "SERVICE_NOT_FOUND"
+        );
+        assert_eq!(
+            PenoosError::timeout("test", 1000).error_type(),
+            "REQUEST_TIMEOUT"
+        );
+        assert_eq!(
+            PenoosError::validation_error("test").error_type(),
+            "VALIDATION_ERROR"
+        );
     }
 }

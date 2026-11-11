@@ -1,13 +1,13 @@
 //! Transport implementations for Penoos
 
 pub mod memory;
-pub mod tcp;
 pub mod nats;
 pub mod redis;
+pub mod tcp;
 
-use std::collections::HashMap;
 use async_trait::async_trait;
 use serde_json::Value;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::errors::Result;
@@ -16,35 +16,42 @@ use crate::errors::Result;
 #[async_trait]
 pub trait Transporter: Send + Sync {
     /// Send a request to a service
-    async fn request(&self, target: &str, action: &str, params: Value, options: RequestOptions) -> Result<Value>;
-    
+    async fn request(
+        &self,
+        target: &str,
+        action: &str,
+        params: Value,
+        options: RequestOptions,
+    ) -> Result<Value>;
+
     /// Publish an event
-    async fn publish(&self, event: &str, payload: Value, groups: Option<Vec<String>>) -> Result<()>;
-    
+    async fn publish(&self, event: &str, payload: Value, groups: Option<Vec<String>>)
+    -> Result<()>;
+
     /// Subscribe to events
     async fn subscribe(&self, events: Vec<String>, handler: Box<dyn EventHandler>) -> Result<()>;
-    
+
     /// Discover services
     async fn discover(&self) -> Result<Vec<ServiceInfo>>;
-    
+
     /// Register this node
     async fn register_node(&self, node_info: NodeInfo) -> Result<()>;
-    
+
     /// Unregister this node
     async fn unregister_node(&self, node_id: &str) -> Result<()>;
-    
+
     /// Send heartbeat
     async fn heartbeat(&self, node_id: &str) -> Result<()>;
-    
+
     /// Get transport statistics
     async fn get_stats(&self) -> Result<TransportStats>;
-    
+
     /// Check if transport is connected
     async fn is_connected(&self) -> Result<bool>;
-    
+
     /// Connect to the transport
     async fn connect(&self) -> Result<()>;
-    
+
     /// Disconnect from the transport
     async fn disconnect(&self) -> Result<()>;
 }
@@ -117,7 +124,7 @@ pub struct ClientInfo {
 }
 
 /// Transport statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TransportStats {
     pub packets_sent: u64,
     pub packets_received: u64,
@@ -137,19 +144,6 @@ impl Default for RequestOptions {
             caller_id: "unknown".to_string(),
             request_id: Uuid::new_v4().to_string(),
             meta: HashMap::new(),
-        }
-    }
-}
-
-impl Default for TransportStats {
-    fn default() -> Self {
-        Self {
-            packets_sent: 0,
-            packets_received: 0,
-            bytes_sent: 0,
-            bytes_received: 0,
-            errors: 0,
-            connected_nodes: 0,
         }
     }
 }

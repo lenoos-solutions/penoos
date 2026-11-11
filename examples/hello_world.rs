@@ -1,9 +1,9 @@
 //! Hello World example for Penoos Rust
-//! 
+//!
 //! This is the simplest possible Penoos application.
 //! Run with: cargo run --example hello_world
 
-use penoos::{ServiceBroker, Service, Context, Result};
+use penoos::{Context, Result, Service, ServiceBroker};
 use serde_json::json;
 
 #[tokio::main]
@@ -19,20 +19,22 @@ async fn main() -> Result<()> {
     // Create a simple greeter service
     let greeter_service = Service::new("greeter")
         .action("hello", |ctx: Context| {
-            let name = ctx.params()
+            let name = ctx
+                .params()
                 .get("name")
                 .and_then(|v| v.as_str())
                 .unwrap_or("World");
-            
+
             println!("👋 Hello action called with name: {}", name);
             Ok(json!(format!("Hello, {}! 🌟", name)))
         })
         .action("welcome", |ctx: Context| {
-            let name = ctx.params()
+            let name = ctx
+                .params()
                 .get("name")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Guest");
-            
+
             println!("🎉 Welcome action called with name: {}", name);
             Ok(json!({
                 "message": format!("Welcome to Penoos, {}!", name),
@@ -49,11 +51,15 @@ async fn main() -> Result<()> {
     println!("✅ Broker started successfully!");
 
     // Call the hello action
-    let result = broker.call("greeter.hello", json!({ "name": "Rust Developer" })).await?;
+    let result = broker
+        .call("greeter.hello", json!({ "name": "Rust Developer" }))
+        .await?;
     println!("📞 Called greeter.hello: {}", result);
 
     // Call the welcome action
-    let result = broker.call("greeter.welcome", json!({ "name": "Rustacean" })).await?;
+    let result = broker
+        .call("greeter.welcome", json!({ "name": "Rustacean" }))
+        .await?;
     println!("📞 Called greeter.welcome: {}", result);
 
     // Call without parameters

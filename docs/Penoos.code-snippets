@@ -3,47 +3,126 @@
 		"prefix": "penoos-svc",
 		"description": "Penoos service",
 		"body": [
+			"use penoos::{Result, Service};",
+			"use serde_json::{json, Value};",
+			"",
+			"/// ${1:Name} service.",
+			"pub fn ${2:name}_service() -> Service {",
+			"\tService::new(\"${1:name}\")",
+			"\t\t.version(\"1.0.0\")",
+			"\t\t.description(\"${3:Describe the service}\")",
+			"\t\t.action(\"${4:ping}\", |ctx| {",
+			"\t\t\tlet _ = ctx.params();",
+			"\t\t\tOk(json!({ \"ok\": true }))",
+			"\t\t})",
+			"\t\t.started(|| Ok(()))",
+			"\t\t.stopped(|| Ok(()))",
+			"}",
+			"$0"
 		]
 	},
 	"penoos-action": {
 		"prefix": "penoos-action",
 		"description": "Penoos service action",
 		"body": [
-			
+			"\t\t.action(\"${1:name}\", |ctx| {",
+			"\t\t\tlet ${2:input} = ctx.params();",
+			"\t\t\t$0",
+			"\t\t\tOk(json!({ \"result\": ${2:input} }))",
+			"\t\t})"
 		]
 	},
 	"penoos-event": {
 		"prefix": "penoos-event",
 		"description": "Penoos service event",
 		"body": [
-			
+			"\t\t.event(\"${1:event.name}\", |ctx| {",
+			"\t\t\tlet payload = ctx.params();",
+			"\t\t\t$0",
+			"\t\t\tOk(())",
+			"\t\t})"
 		]
 	},
 	"penoos-broker": {
 		"prefix": "penoos-broker",
 		"description": "Penoos create ServiceBroker",
 		"body": [
-			
+			"let mut broker = ServiceBroker::new()?;",
+			"broker.start().await?;",
+			"broker.create_service(${1:service}).await?;",
+			"$0",
+			"broker.stop().await?;"
 		]
 	},
 	"penoos-db-service": {
 		"prefix": "penoos-db-svc",
 		"description": "Penoos DB service",
 		"body": [
+			"use penoos::{PenoosError, Result, Service};",
+			"use serde_json::{json, Value};",
+			"use std::sync::{Arc, Mutex};",
+			"",
+			"/// ${1:Entity} persistence service.",
+			"pub fn ${2:entity}_db_service(store: Arc<Mutex<Vec<Value>>>) -> Service {",
+			"\tlet list_store = Arc::clone(&store);",
+			"\tlet create_store = Arc::clone(&store);",
+			"\tService::new(\"${1:entity}\")",
+			"\t\t.action(\"list\", move |_ctx| {",
+			"\t\t\tlet items = list_store.lock().map_err(|_| PenoosError::ValidationError { message: \"store lock poisoned\".into() })?;",
+			"\t\t\tOk(json!(items.clone()))",
+			"\t\t})",
+			"\t\t.action(\"create\", move |ctx| {",
+			"\t\t\tlet item = ctx.params().clone();",
+			"\t\t\tcreate_store",
+			"\t\t\t\t.lock()",
+			"\t\t\t\t.map_err(|_| PenoosError::ValidationError { message: \"store lock poisoned\".into() })?",
+			"\t\t\t\t.push(item.clone());",
+			"\t\t\tOk(item)",
+			"\t\t})",
+			"\t\t.started(|| Ok(()))",
+			"\t\t.stopped(|| Ok(()))",
+			"}",
+			"$0"
 		]
 	},
 	"penoos-unit-test": {
 		"prefix": "penoos-unit",
 		"description": "Unit test for Penoos service",
 		"body": [
-			
+			"#[cfg(test)]",
+			"mod tests {",
+			"\tuse super::*;",
+			"",
+			"\t#[test]",
+			"\tfn ${1:${TM_FILENAME_BASE}}_${2:action}_is_registered() {",
+			"\t\tlet service = ${3:name}_service();",
+			"\t\tassert!(service.has_action(\"${2:action}\"));",
+			"\t\t$0",
+			"\t}",
+			"}"
 		]
 	},
 	"penoos-middleware": {
 		"prefix": "penoos-mw",
 		"description": "Penoos middleware",
 		"body": [
-			
+			"use penoos::middleware::Middleware;",
+			"use penoos::{Context, Result};",
+			"",
+			"/// ${1:Name} middleware.",
+			"#[derive(Debug, Default)]",
+			"pub struct ${1:Name}Middleware;",
+			"",
+			"impl Middleware for ${1:Name}Middleware {",
+			"\tfn before_call(&self, ctx: &mut Context) -> Result<()> {",
+			"\t\t$0",
+			"\t\tOk(())",
+			"\t}",
+			"",
+			"\tfn after_call(&self, _ctx: &Context, _result: &Result<serde_json::Value>) -> Result<()> {",
+			"\t\tOk(())",
+			"\t}",
+			"}"
 		]
 	}
 }

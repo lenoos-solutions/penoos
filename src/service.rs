@@ -1,5 +1,5 @@
 //! Service definition and management
-//! 
+//!
 //! Services are the core building blocks of a Penoos application.
 //! Each service can define actions (RPC endpoints) and events (pub/sub handlers).
 
@@ -8,11 +8,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::{
-    context::Context,
-    errors::Result,
-    mixins::Mixin,
-};
+use crate::{context::Context, errors::Result, mixins::Mixin};
 
 /// Service action handler type
 pub type ActionHandler = Arc<dyn Fn(Context) -> Result<Value> + Send + Sync>;
@@ -119,7 +115,9 @@ impl Service {
     where
         F: Fn(Context) -> Result<Value> + Send + Sync + 'static,
     {
-        self.schema.actions.insert(name.to_string(), Arc::new(handler));
+        self.schema
+            .actions
+            .insert(name.to_string(), Arc::new(handler));
         self
     }
 
@@ -128,7 +126,9 @@ impl Service {
     where
         F: Fn(Context) -> Result<()> + Send + Sync + 'static,
     {
-        self.schema.events.insert(name.to_string(), Arc::new(handler));
+        self.schema
+            .events
+            .insert(name.to_string(), Arc::new(handler));
         self
     }
 
@@ -178,10 +178,10 @@ impl Service {
     pub fn add_mixin(&mut self, mixin: Arc<dyn Mixin>) -> Result<()> {
         // Apply the mixin to the service
         mixin.apply(self)?;
-        
+
         // Store the mixin reference
         self.schema.mixins.push(mixin);
-        
+
         Ok(())
     }
 
@@ -240,8 +240,8 @@ impl Clone for Service {
                 metadata: self.schema.metadata.clone(),
                 dependencies: self.schema.dependencies.clone(),
                 actions: HashMap::new(), // Actions can't be cloned due to closures
-                events: HashMap::new(),   // Events can't be cloned due to closures
-                created: None,            // Hooks can't be cloned due to closures
+                events: HashMap::new(),  // Events can't be cloned due to closures
+                created: None,           // Hooks can't be cloned due to closures
                 started: None,
                 stopped: None,
                 mixins: self.schema.mixins.clone(),
@@ -295,7 +295,9 @@ impl ServiceBuilder {
     where
         F: Fn(Context) -> Result<Value> + Send + Sync + 'static,
     {
-        self.schema.actions.insert(name.to_string(), Arc::new(handler));
+        self.schema
+            .actions
+            .insert(name.to_string(), Arc::new(handler));
         self
     }
 
@@ -304,7 +306,9 @@ impl ServiceBuilder {
     where
         F: Fn(Context) -> Result<()> + Send + Sync + 'static,
     {
-        self.schema.events.insert(name.to_string(), Arc::new(handler));
+        self.schema
+            .events
+            .insert(name.to_string(), Arc::new(handler));
         self
     }
 
@@ -317,7 +321,6 @@ impl ServiceBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
     fn test_service_creation() {

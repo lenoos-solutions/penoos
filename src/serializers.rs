@@ -8,10 +8,10 @@ use crate::errors::Result;
 pub trait Serializer: Send + Sync {
     /// Serialize a value to bytes
     fn serialize(&self, value: &Value) -> Result<Vec<u8>>;
-    
+
     /// Deserialize bytes to a value
     fn deserialize(&self, data: &[u8]) -> Result<Value>;
-    
+
     /// Get the content type for this serializer
     fn content_type(&self) -> &'static str;
 }
@@ -40,20 +40,14 @@ pub struct MessagePackSerializer;
 #[cfg(feature = "msgpack")]
 impl Serializer for MessagePackSerializer {
     fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
-        use rmp_serde;
-        rmp_serde::to_vec(value).map_err(|e| {
-            crate::errors::PenoosError::SerializationError {
-                message: format!("MessagePack serialization error: {}", e),
-            }
+        rmp_serde::to_vec(value).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("MessagePack serialization error: {}", e),
         })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Value> {
-        use rmp_serde;
-        rmp_serde::from_slice(data).map_err(|e| {
-            crate::errors::PenoosError::SerializationError {
-                message: format!("MessagePack deserialization error: {}", e),
-            }
+        rmp_serde::from_slice(data).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("MessagePack deserialization error: {}", e),
         })
     }
 
@@ -62,26 +56,144 @@ impl Serializer for MessagePackSerializer {
     }
 }
 
-/// Binary serializer using bincode
-#[cfg(feature = "bincode-serializer")]
-pub struct BincodeSerializer;
+/// Self-describing mirror of [`serde_json::Value`] for non-self-describing binary codecs.
+///
+/// `serde_json::Value` deserializes through `deserialize_any`, which binary formats
+/// such as postcard and oxicode do not support, so values are converted to this type first.
+#[cfg(any(feature = "oxicode-serializer", feature = "postcard-serializer"))]
+#[derive(serde::Serialize, serde::Deserialize)]
+enum WireValue {
+    Null,
+    Bool(bool),
+    I64(i64),
+    U64(u64),
+    F64(f64),
+    String(String),
+    Array(Vec<WireValue>),
+    Object(std::collections::BTreeMap<String, WireValue>),
+}
 
-#[cfg(feature = "bincode-serializer")]
-impl Serializer for BincodeSerializer {
+#[cfg(any(feature = "oxicode-serializer", feature = "postcard-serializer"))]
+impl From<&Value> for WireValue {
+    fn from(value: &Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(b) => Self::Bool(*b),
+            Value::Number(n) => match (n.as_i64(), n.as_u64()) {
+                (Some(i), _) => Self::I64(i),
+                (None, Some(u)) => Self::U64(u),
+                (None, None) => Self::F64(n.as_f64().unwrap_or_default()),
+            },
+            Value::String(s) => Self::String(s.clone()),
+            Value::Array(items) => Self::Array(items.iter().map(Self::from).collect()),
+            Value::Object(map) => Self::Object(
+                map.iter()
+                    .map(|(k, v)| (k.clone(), Self::from(v)))
+                    .collect(),
+            ),
+        }
+    }
+}
+
+#[cfg(any(feature = "oxicode-serializer", feature = "postcard-serializer"))]
+impl From<WireValue> for Value {
+    fn from(wire: WireValue) -> Self {
+        match wire {
+            WireValue::Null => Value::Null,
+            WireValue::Bool(b) => Value::Bool(b),
+            WireValue::I64(i) => Value::from(i),
+            WireValue::U64(u) => Value::from(u),
+            WireValue::F64(f) => serde_json::Number::from_f64(f)
+                .map(Value::Number)
+                .unwrap_or(Value::Null),
+            WireValue::String(s) => Value::String(s),
+            WireValue::Array(items) => Value::Array(items.into_iter().map(Value::from).collect()),
+            WireValue::Object(map) => {
+                Value::Object(map.into_iter().map(|(k, v)| (k, Value::from(v))).collect())
+            }
+        }
+    }
+}
+
+/// Compact binary serializer using oxicode (serde integration, standard config)
+#[cfg(feature = "oxicode-serializer")]
+pub struct OxicodeSerializer;
+
+#[cfg(feature = "oxicode-serializer")]
+impl Serializer for OxicodeSerializer {
     fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
-        bincode::serialize(value).map_err(|e| {
+        oxicode::serde::encode_to_vec(&WireValue::from(value), oxicode::config::standard()).map_err(
+            |e| crate::errors::PenoosError::SerializationError {
+                message: format!("Oxicode serialization error: {}", e),
+            },
+        )
+    }
+
+    fn deserialize(&self, data: &[u8]) -> Result<Value> {
+        let (wire, _) =
+            oxicode::serde::decode_from_slice::<WireValue, _>(data, oxicode::config::standard())
+                .map_err(|e| crate::errors::PenoosError::SerializationError {
+                    message: format!("Oxicode deserialization error: {}", e),
+                })?;
+        Ok(wire.into())
+    }
+
+    fn content_type(&self) -> &'static str {
+        "application/octet-stream"
+    }
+}
+
+/// Binary serializer using wincode (schema-based)
+///
+/// wincode has no serde integration, so the value is encoded as its JSON text
+/// inside a wincode-framed string. The payload is therefore not more compact than JSON.
+#[cfg(feature = "wincode-serializer")]
+pub struct WincodeSerializer;
+
+#[cfg(feature = "wincode-serializer")]
+impl Serializer for WincodeSerializer {
+    fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
+        let text = serde_json::to_string(value)?;
+        wincode::serialize(&text).map_err(|e| crate::errors::PenoosError::SerializationError {
+            message: format!("Wincode serialization error: {}", e),
+        })
+    }
+
+    fn deserialize(&self, data: &[u8]) -> Result<Value> {
+        let text: String = wincode::deserialize(data).map_err(|e| {
             crate::errors::PenoosError::SerializationError {
-                message: format!("Bincode serialization error: {}", e),
+                message: format!("Wincode deserialization error: {}", e),
+            }
+        })?;
+        Ok(serde_json::from_str(&text)?)
+    }
+
+    fn content_type(&self) -> &'static str {
+        "application/octet-stream"
+    }
+}
+
+/// Compact binary serializer using postcard
+#[cfg(feature = "postcard-serializer")]
+pub struct PostcardSerializer;
+
+#[cfg(feature = "postcard-serializer")]
+impl Serializer for PostcardSerializer {
+    fn serialize(&self, value: &Value) -> Result<Vec<u8>> {
+        postcard::to_allocvec(&WireValue::from(value)).map_err(|e| {
+            crate::errors::PenoosError::SerializationError {
+                message: format!("Postcard serialization error: {}", e),
             }
         })
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<Value> {
-        bincode::deserialize(data).map_err(|e| {
+        let wire: WireValue = postcard::from_bytes(data).map_err(|e| {
             crate::errors::PenoosError::SerializationError {
-                message: format!("Bincode deserialization error: {}", e),
+                message: format!("Postcard deserialization error: {}", e),
             }
-        })
+        })?;
+        Ok(wire.into())
     }
 
     fn content_type(&self) -> &'static str {
@@ -101,15 +213,21 @@ impl SerializerRegistry {
             default: Box::new(JsonSerializer),
             serializers: std::collections::HashMap::new(),
         };
-        
+
         registry.register("json", Box::new(JsonSerializer));
-        
+
         #[cfg(feature = "msgpack")]
         registry.register("msgpack", Box::new(MessagePackSerializer));
-        
-        #[cfg(feature = "bincode-serializer")]
-        registry.register("bincode", Box::new(BincodeSerializer));
-        
+
+        #[cfg(feature = "oxicode-serializer")]
+        registry.register("oxicode", Box::new(OxicodeSerializer));
+
+        #[cfg(feature = "wincode-serializer")]
+        registry.register("wincode", Box::new(WincodeSerializer));
+
+        #[cfg(feature = "postcard-serializer")]
+        registry.register("postcard", Box::new(PostcardSerializer));
+
         registry
     }
 
@@ -167,11 +285,11 @@ mod tests {
 
     #[test]
     fn test_serializer_registry() {
-        let mut registry = SerializerRegistry::new();
-        
+        let registry = SerializerRegistry::new();
+
         assert!(registry.get("json").is_some());
         assert!(registry.get("nonexistent").is_none());
-        
+
         let serializers = registry.list();
         assert!(serializers.contains(&"json".to_string()));
     }
@@ -180,7 +298,7 @@ mod tests {
     fn test_serializer_round_trip() {
         let registry = SerializerRegistry::new();
         let json_serializer = registry.get("json").unwrap();
-        
+
         let original = json!({
             "string": "hello",
             "number": 42,
@@ -193,5 +311,85 @@ mod tests {
         let deserialized = json_serializer.deserialize(&serialized).unwrap();
 
         assert_eq!(original, deserialized);
+    }
+
+    #[cfg(any(
+        feature = "oxicode-serializer",
+        feature = "wincode-serializer",
+        feature = "postcard-serializer"
+    ))]
+    fn nested_value() -> Value {
+        json!({
+            "null": null,
+            "bool": false,
+            "negative": -7,
+            "unsigned": u64::MAX,
+            "float": 2.5,
+            "string": "héllo",
+            "array": [1, "two", [3], {"four": 4}],
+            "object": {"nested": {"deep": true}}
+        })
+    }
+
+    #[cfg(feature = "oxicode-serializer")]
+    #[test]
+    fn test_oxicode_round_trip() {
+        let serializer = OxicodeSerializer;
+        let value = nested_value();
+
+        let bytes = serializer.serialize(&value).unwrap();
+        assert_eq!(serializer.deserialize(&bytes).unwrap(), value);
+        assert_eq!(serializer.content_type(), "application/octet-stream");
+    }
+
+    #[cfg(feature = "oxicode-serializer")]
+    #[test]
+    fn test_oxicode_rejects_invalid_bytes() {
+        let serializer = OxicodeSerializer;
+        assert!(serializer.deserialize(&[0xFF, 0xFF, 0xFF]).is_err());
+    }
+
+    #[cfg(feature = "wincode-serializer")]
+    #[test]
+    fn test_wincode_round_trip() {
+        let serializer = WincodeSerializer;
+        let value = nested_value();
+
+        let bytes = serializer.serialize(&value).unwrap();
+        assert_eq!(serializer.deserialize(&bytes).unwrap(), value);
+        assert_eq!(serializer.content_type(), "application/octet-stream");
+    }
+
+    #[cfg(feature = "wincode-serializer")]
+    #[test]
+    fn test_wincode_rejects_invalid_bytes() {
+        let serializer = WincodeSerializer;
+        assert!(serializer.deserialize(&[0xFF]).is_err());
+    }
+
+    #[cfg(feature = "postcard-serializer")]
+    #[test]
+    fn test_postcard_round_trip() {
+        let serializer = PostcardSerializer;
+        let value = nested_value();
+
+        let bytes = serializer.serialize(&value).unwrap();
+        assert_eq!(serializer.deserialize(&bytes).unwrap(), value);
+        assert_eq!(serializer.content_type(), "application/octet-stream");
+    }
+
+    #[cfg(feature = "postcard-serializer")]
+    #[test]
+    fn test_postcard_rejects_invalid_bytes() {
+        let serializer = PostcardSerializer;
+        assert!(serializer.deserialize(&[0xFF, 0xFF, 0xFF]).is_err());
+    }
+
+    #[cfg(feature = "postcard-serializer")]
+    #[test]
+    fn test_registry_exposes_selectable_binary_serializers() {
+        let registry = SerializerRegistry::new();
+        assert!(registry.get("postcard").is_some());
+        assert!(registry.get("bincode").is_none());
     }
 }

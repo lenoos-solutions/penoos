@@ -1,10 +1,10 @@
 //! JSON logger implementation for Penoos
-//! 
+//!
 //! This logger outputs structured JSON log messages.
 
 use crate::errors::Result;
 use async_trait::async_trait;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{self, Write};
 
 /// Log level for JSON logging
@@ -72,10 +72,10 @@ impl JsonLogger {
             entry["timestamp"] = json!(chrono::Utc::now().to_rfc3339());
         }
 
-        if self.config.include_hostname {
-            if let Ok(hostname) = hostname::get() {
-                entry["hostname"] = json!(hostname.to_string_lossy());
-            }
+        if self.config.include_hostname
+            && let Ok(hostname) = hostname::get()
+        {
+            entry["hostname"] = json!(hostname.to_string_lossy());
         }
 
         if let Some(meta) = meta {
@@ -92,7 +92,7 @@ impl JsonLogger {
         }
 
         let entry = self.create_log_entry(level, message, meta);
-        
+
         let output = if self.config.pretty {
             serde_json::to_string_pretty(&entry)?
         } else {

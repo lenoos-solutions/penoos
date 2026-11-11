@@ -4,8 +4,8 @@ pub mod console;
 pub mod file;
 pub mod json;
 
-use std::collections::HashMap;
 use serde_json::Value;
+use std::collections::HashMap;
 
 /// Log levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -19,6 +19,8 @@ pub enum LogLevel {
 }
 
 impl LogLevel {
+    // Returns Option, not the FromStr Result, so it intentionally does not implement the trait.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(level: &str) -> Option<Self> {
         match level.to_lowercase().as_str() {
             "trace" => Some(LogLevel::Trace),
@@ -30,7 +32,7 @@ impl LogLevel {
             _ => None,
         }
     }
-    
+
     pub fn as_str(&self) -> &'static str {
         match self {
             LogLevel::Trace => "TRACE",
@@ -119,32 +121,32 @@ impl LogEntry {
             metadata: HashMap::new(),
         }
     }
-    
+
     pub fn with_module(mut self, module: String) -> Self {
         self.module = Some(module);
         self
     }
-    
+
     pub fn with_service(mut self, service: String) -> Self {
         self.service = Some(service);
         self
     }
-    
+
     pub fn with_action(mut self, action: String) -> Self {
         self.action = Some(action);
         self
     }
-    
+
     pub fn with_request_id(mut self, request_id: String) -> Self {
         self.request_id = Some(request_id);
         self
     }
-    
+
     pub fn with_node_id(mut self, node_id: String) -> Self {
         self.node_id = Some(node_id);
         self
     }
-    
+
     pub fn with_metadata(mut self, key: String, value: Value) -> Self {
         self.metadata.insert(key, value);
         self
@@ -158,7 +160,7 @@ impl Colors {
     pub const RESET: &'static str = "\x1b[0m";
     pub const BOLD: &'static str = "\x1b[1m";
     pub const DIM: &'static str = "\x1b[2m";
-    
+
     // Foreground colors
     pub const BLACK: &'static str = "\x1b[30m";
     pub const RED: &'static str = "\x1b[31m";
@@ -168,7 +170,7 @@ impl Colors {
     pub const MAGENTA: &'static str = "\x1b[35m";
     pub const CYAN: &'static str = "\x1b[36m";
     pub const WHITE: &'static str = "\x1b[37m";
-    
+
     // Bright foreground colors
     pub const BRIGHT_BLACK: &'static str = "\x1b[90m";
     pub const BRIGHT_RED: &'static str = "\x1b[91m";
@@ -178,7 +180,7 @@ impl Colors {
     pub const BRIGHT_MAGENTA: &'static str = "\x1b[95m";
     pub const BRIGHT_CYAN: &'static str = "\x1b[96m";
     pub const BRIGHT_WHITE: &'static str = "\x1b[97m";
-    
+
     pub fn for_level(level: LogLevel) -> &'static str {
         match level {
             LogLevel::Trace => Self::DIM,
@@ -189,13 +191,20 @@ impl Colors {
             LogLevel::Fatal => Self::BRIGHT_RED,
         }
     }
-    
+
     pub fn for_module(module: &str) -> &'static str {
         // Generate a consistent color for each module name
-        let hash = module.chars().fold(0u32, |acc, c| acc.wrapping_add(c as u32));
+        let hash = module
+            .chars()
+            .fold(0u32, |acc, c| acc.wrapping_add(c as u32));
         let colors = [
-            Self::BLUE, Self::CYAN, Self::MAGENTA, Self::YELLOW,
-            Self::BRIGHT_BLUE, Self::BRIGHT_CYAN, Self::BRIGHT_MAGENTA,
+            Self::BLUE,
+            Self::CYAN,
+            Self::MAGENTA,
+            Self::YELLOW,
+            Self::BRIGHT_BLUE,
+            Self::BRIGHT_CYAN,
+            Self::BRIGHT_MAGENTA,
         ];
         colors[hash as usize % colors.len()]
     }

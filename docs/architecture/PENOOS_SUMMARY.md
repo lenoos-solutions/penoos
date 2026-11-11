@@ -56,7 +56,7 @@ This project successfully ports the Node.js Penoos microservices framework to Ru
 
 9. **Serialization** (`src/serializers.rs`)
    - JSON serialization (default)
-   - Bincode serialization (feature-gated)
+   - Binary serializers, each feature-gated: oxicode, wincode, postcard (MessagePack behind `msgpack`)
    - Extensible serializer interface
 
 10. **Utilities** (`src/utils.rs`)
@@ -140,7 +140,7 @@ This project successfully ports the Node.js Penoos microservices framework to Ru
 ### Features Available
 
 - `redis-cache`: Enable Redis caching support
-- `bincode-serializer`: Enable binary serialization
+- `oxicode-serializer`, `wincode-serializer`, `postcard-serializer`: Enable binary serialization
 - Default features provide JSON serialization and in-memory caching
 
 ### Dependencies

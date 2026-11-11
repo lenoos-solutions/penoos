@@ -1,13 +1,13 @@
 //! Middleware system for Penoos
 
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use crate::{
     context::Context,
-    errors::{Result, PenoosError},
+    errors::{PenoosError, Result},
 };
 
 /// Rate limiter state
@@ -29,8 +29,9 @@ impl RateLimiterState {
 
     fn is_allowed(&mut self) -> bool {
         let now = Instant::now();
-        self.requests.retain(|&time| now.duration_since(time) < self.window);
-        
+        self.requests
+            .retain(|&time| now.duration_since(time) < self.window);
+
         if self.requests.len() < self.max_requests {
             self.requests.push(now);
             true
@@ -187,17 +188,30 @@ impl Middleware for LoggingMiddleware {
     }
 
     fn before_call(&self, ctx: &mut Context) -> Result<()> {
-        log::debug!("Calling action '{}' with request ID '{}'", ctx.action, ctx.id);
+        log::debug!(
+            "Calling action '{}' with request ID '{}'",
+            ctx.action,
+            ctx.id
+        );
         Ok(())
     }
 
     fn after_call(&self, ctx: &Context, result: &Result<serde_json::Value>) -> Result<()> {
         match result {
             Ok(_) => {
-                log::debug!("Action '{}' completed successfully (request ID: '{}')", ctx.action, ctx.id);
+                log::debug!(
+                    "Action '{}' completed successfully (request ID: '{}')",
+                    ctx.action,
+                    ctx.id
+                );
             }
             Err(e) => {
-                log::error!("Action '{}' failed: {} (request ID: '{}')", ctx.action, e, ctx.id);
+                log::error!(
+                    "Action '{}' failed: {} (request ID: '{}')",
+                    ctx.action,
+                    e,
+                    ctx.id
+                );
             }
         }
         Ok(())
@@ -223,14 +237,17 @@ impl Middleware for MetricsMiddleware {
     }
 
     fn after_call(&self, ctx: &Context, _result: &Result<serde_json::Value>) -> Result<()> {
-        self.registry.increment_counter("penoos.request.active", u64::MAX); // Decrement
+        self.registry
+            .increment_counter("penoos.request.active", u64::MAX); // Decrement
         let duration = ctx.elapsed() as f64 / 1000.0; // Convert to seconds
-        self.registry.observe_histogram("penoos.request.time", duration);
+        self.registry
+            .observe_histogram("penoos.request.time", duration);
         Ok(())
     }
 
     fn before_emit(&self, _ctx: &mut Context) -> Result<()> {
-        self.registry.increment_counter("penoos.event.emit.total", 1);
+        self.registry
+            .increment_counter("penoos.event.emit.total", 1);
         Ok(())
     }
 }
@@ -260,8 +277,7 @@ impl AuthMiddleware {
 
     fn verify_token(&self, token: &str) -> Result<bool> {
         // Simple token verification (in real implementation, use JWT)
-        if token.starts_with("Bearer ") {
-            let token_part = &token[7..];
+        if let Some(token_part) = token.strip_prefix("Bearer ") {
             // In real implementation, verify JWT signature with secret_key
             Ok(!token_part.is_empty())
         } else {
@@ -272,13 +288,18 @@ impl AuthMiddleware {
 
 impl Middleware for AuthMiddleware {
     fn before_call(&self, ctx: &mut Context) -> Result<()> {
-        let action_name = format!("{}.{}", ctx.service_name().unwrap_or(""), ctx.action_name().unwrap_or(""));
-        
+        let action_name = format!(
+            "{}.{}",
+            ctx.service_name().unwrap_or(""),
+            ctx.action_name().unwrap_or("")
+        );
+
         if self.skip_actions.contains(&action_name) {
             return Ok(());
         }
 
-        let auth_header = ctx.meta()
+        let auth_header = ctx
+            .meta()
             .get("authorization")
             .or_else(|| ctx.meta().get("Authorization"))
             .and_then(|v| v.as_str());
@@ -288,10 +309,14 @@ impl Middleware for AuthMiddleware {
                 if self.verify_token(token)? {
                     Ok(())
                 } else {
-                    Err(PenoosError::UnauthorizedError { message: "Invalid token".to_string() })
+                    Err(PenoosError::UnauthorizedError {
+                        message: "Invalid token".to_string(),
+                    })
                 }
             }
-            None => Err(PenoosError::UnauthorizedError { message: "Missing authorization header".to_string() }),
+            None => Err(PenoosError::UnauthorizedError {
+                message: "Missing authorization header".to_string(),
+            }),
         }
     }
 }
@@ -326,7 +351,7 @@ impl Middleware for RateLimitMiddleware {
     fn before_call(&self, ctx: &mut Context) -> Result<()> {
         let client_id = self.get_client_id(ctx);
         let mut limiters = self.limiters.lock().unwrap();
-        
+
         let limiter = limiters
             .entry(client_id.clone())
             .or_insert_with(|| RateLimiterState::new(self.max_requests, self.window));
@@ -334,9 +359,9 @@ impl Middleware for RateLimitMiddleware {
         if limiter.is_allowed() {
             Ok(())
         } else {
-            Err(PenoosError::RateLimitError { message: format!(
-                "Rate limit exceeded for client: {}", client_id
-            ) })
+            Err(PenoosError::RateLimitError {
+                message: format!("Rate limit exceeded for client: {}", client_id),
+            })
         }
     }
 }
@@ -356,7 +381,8 @@ impl CacheMiddleware {
     }
 
     fn get_cache_key(&self, ctx: &Context) -> String {
-        format!("{}:{}", 
+        format!(
+            "{}:{}",
             ctx.action_name().unwrap_or("unknown"),
             serde_json::to_string(ctx.params()).unwrap_or_default()
         )
@@ -385,13 +411,15 @@ impl CacheMiddleware {
 impl Middleware for CacheMiddleware {
     fn before_call(&self, ctx: &mut Context) -> Result<()> {
         let cache_key = self.get_cache_key(ctx);
-        
+
         if let Some(cached_value) = self.get_cached(&cache_key) {
             // Store cached result in context meta for retrieval
-            ctx.meta_mut().insert("cached_result".to_string(), cached_value);
-            ctx.meta_mut().insert("from_cache".to_string(), serde_json::Value::Bool(true));
+            ctx.meta_mut()
+                .insert("cached_result".to_string(), cached_value);
+            ctx.meta_mut()
+                .insert("from_cache".to_string(), serde_json::Value::Bool(true));
         }
-        
+
         Ok(())
     }
 
@@ -399,12 +427,17 @@ impl Middleware for CacheMiddleware {
         // Only cache successful results
         if let Ok(value) = result {
             // Don't cache if result was already from cache
-            if !ctx.meta().get("from_cache").and_then(|v| v.as_bool()).unwrap_or(false) {
+            if !ctx
+                .meta()
+                .get("from_cache")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
                 let cache_key = self.get_cache_key(ctx);
                 self.set_cache(cache_key, value.clone());
             }
         }
-        
+
         Ok(())
     }
 }
@@ -441,7 +474,7 @@ mod tests {
     fn test_middleware_manager() {
         let mut manager = MiddlewareManager::new();
         let middleware = Arc::new(TestMiddleware::new());
-        
+
         manager.add(middleware.clone());
         assert_eq!(manager.count(), 1);
 

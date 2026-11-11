@@ -1,5 +1,5 @@
 //! Context for action calls and events
-//! 
+//!
 //! The Context object is passed to action handlers and event handlers,
 //! containing the request parameters, metadata, and other contextual information.
 
@@ -46,7 +46,12 @@ pub struct Context {
 
 impl Context {
     /// Create a new context
-    pub fn new(node_id: String, action: String, params: Value, meta: HashMap<String, Value>) -> Self {
+    pub fn new(
+        node_id: String,
+        action: String,
+        params: Value,
+        meta: HashMap<String, Value>,
+    ) -> Self {
         let id = Uuid::new_v4().to_string();
         let request_id = id.clone();
         let created_at = SystemTime::now()
@@ -162,7 +167,8 @@ impl Context {
 
     /// Set a response header
     pub fn set_response_header(&mut self, key: &str, value: &str) {
-        self.response_headers.insert(key.to_string(), value.to_string());
+        self.response_headers
+            .insert(key.to_string(), value.to_string());
     }
 
     /// Get a response header value
@@ -338,10 +344,7 @@ mod tests {
             HashMap::new(),
         );
 
-        let child = parent.child(
-            "child.action".to_string(),
-            json!({"data": "test"}),
-        );
+        let child = parent.child("child.action".to_string(), json!({"data": "test"}));
 
         assert_eq!(child.level, 2);
         assert_eq!(child.parent_id, Some(parent.id.clone()));
@@ -354,10 +357,10 @@ mod tests {
     #[test]
     fn test_context_metadata() {
         let mut ctx = Context::default();
-        
+
         ctx.set_meta("key1", "value1");
         ctx.set_meta("key2", 42);
-        
+
         assert_eq!(ctx.get_meta("key1"), Some(&json!("value1")));
         assert_eq!(ctx.get_meta("key2"), Some(&json!(42)));
         assert_eq!(ctx.get_meta("nonexistent"), None);
@@ -366,21 +369,30 @@ mod tests {
     #[test]
     fn test_context_headers() {
         let mut ctx = Context::default();
-        
+
         ctx.set_header("Authorization", "Bearer token123");
         ctx.set_response_header("Content-Type", "application/json");
-        
-        assert_eq!(ctx.get_header("Authorization"), Some(&"Bearer token123".to_string()));
-        assert_eq!(ctx.get_response_header("Content-Type"), Some(&"application/json".to_string()));
+
+        assert_eq!(
+            ctx.get_header("Authorization"),
+            Some(&"Bearer token123".to_string())
+        );
+        assert_eq!(
+            ctx.get_response_header("Content-Type"),
+            Some(&"application/json".to_string())
+        );
     }
 
     #[test]
     fn test_context_locals() {
         let mut ctx = Context::default();
-        
+
         ctx.set_local("temp_data", json!({"important": true}));
-        
-        assert_eq!(ctx.get_local("temp_data"), Some(&json!({"important": true})));
+
+        assert_eq!(
+            ctx.get_local("temp_data"),
+            Some(&json!({"important": true}))
+        );
     }
 
     #[test]
@@ -392,10 +404,7 @@ mod tests {
             HashMap::new(),
         );
 
-        let child = parent.child(
-            "service2.action2".to_string(),
-            json!({}),
-        );
+        let child = parent.child("service2.action2".to_string(), json!({}));
 
         let chain = child.call_chain();
         assert_eq!(chain, vec!["service1.action1", "service2.action2"]);
