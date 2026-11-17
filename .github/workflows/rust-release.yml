@@ -97,7 +97,7 @@ jobs:
       - name: Generate checksums
         working-directory: dist
         run: sha256sum penoos-runner-* > SHA256SUMS
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/penoos-runner-*
